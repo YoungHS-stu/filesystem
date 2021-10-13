@@ -1,1 +1,2 @@
 init
+from company local
