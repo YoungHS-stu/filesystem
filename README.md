@@ -1,2 +1,2 @@
-init
-from company local
+init  
+from company local  
