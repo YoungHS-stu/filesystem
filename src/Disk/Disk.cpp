@@ -1,65 +1,93 @@
 #include"Disk.h"
-
-int ConstructingDisk(FILE* pFile)
+int Disk::InitRootDirectory(FILE** )
 {
-
+    printf_src("Initializing Root Directory");
+    Directory rootDir;
+    rootDir.vFiles.push_back(File(".",0));
+    rootDir.vFiles.push_back(File("..",0));
+    size_t DirSize = rootDir.vFiles.size() * sizeof(File);
+    
     return 0;
 }
-int CreateDiskFile(FILE* pFile)
+
+int Disk::SetCurrentInode(int inode_id)
 {
-    printf("creating disk file\n");
-    errCode = fopen_s(&pFile, DISK_FILE_NAME, "w");
-    //fprintf(pFile, "%d,%d,%d\n", 1, 2, 3);// !写入ASCII字符
-    if(errCode!=0){printf("Disk File Initialization Fails!\n"); return -1;}
-
-    // !为了创建指定大小的文件
-    errCode = fseek(pFile, INIT_DISK_SIZE-1, SEEK_SET);
-    if(errCode!=0){printf("Disk Seek Fails!\n"); return -1;}
-
-    errCode = fputc(0, pFile);
-    if(errCode!=0){printf("Disk fputc Fails!\n"); return -1;}
-    fclose(pFile);
     
+    return 0;
+}
 
-    // !以读写方式重新打开文件, 并二进制加入Override
-    errCode = fopen_s(&pFile, DISK_FILE_NAME, "rb+");
-    size_t r = fwrite(OVERRIDE, sizeof(char), sizeof(OVERRIDE), pFile);
-    if(r!=sizeof(OVERRIDE)){printf("Disk Put Override Fails!\n"); return -1;}
+int Disk::LoadDiskFile(FILE** pFile) {
+    printf_src("Begin");
+    printf_src("Load SuperBlock");
+    Fseek(*pFile, 0L, SEEK_SET);
+    errno_t r = Fread(&oSuperBlock, sizeof(oSuperBlock), 1, *pFile);
+    if(r!=1) {printf("Load SuperBlock Failed\n"); return -1;} //1为正常值，模仿的原生逻辑
 
+    //-2 set init inode
+    r = SetCurrentInode(0);
+    if(r!=0) {printf("Set Initiail Inode Failed\n"); return -2;} 
+    return 0;
+}
+
+int Disk::CreateDiskFile(FILE** pFile)
+{
+    printf("creating disk file from %s\n", __FUNCTION__);
+    Fopen(pFile, DISK_FILE_NAME, "w");
+    // !为了创建指定大小的文件
+    Fseek(*pFile, INIT_DISK_SIZE-1, SEEK_SET);
+    
+    errno_t errCode = fputc(0, *pFile);
+    if(errCode!=0){printf("Disk fputc Fails!\n"); return -1;}
+    fclose(*pFile);
+    
+    // !以读写方式重新打开文件
+    Fopen(pFile, DISK_FILE_NAME, "rb+");
     printf("Disk File Created!\n");
     return 0;
 }
-int OpenDiskFile(FILE* pFile )
+int Disk::OpenDiskFile(FILE** pFile)
 {
     printf("opening disk file\n");
+    bool bLoadDisk = false;
     // errno_t = int
-    errno_t errCode = fopen_s(&pFile,DISK_FILE_NAME,"rb+");
+    
+    errno_t errCode = Fopen(pFile,DISK_FILE_NAME,"rb+");
     if (errCode == 0)
     {
-        printf("Disk File Exists!\n")
+        printf("Disk File Exists!\n");
+        bLoadDisk = true;
     }
-    else
+    if (!bLoadDisk)
     {   
         printf("Disk File Not Found! Begin Disk Initialization: Disk File Name -> %s\n",DISK_FILE_NAME);
+        // -1 创建Disk文件
         errCode = CreateDiskFile(pFile);
         if(errCode!=0){printf("Disk Create Fails!\n"); return -1;}
-        errCode = ConstructingDisk(pFile);
+        // -2 构建磁盘结构
+        oBlockManager.InitializeDiskBlocks(&oSuperBlock, pFile);
         if(errCode!=0){printf("Disk Construction Fails!\n"); return -1;}
-
-
+        InitRootDirectory(pFile);
+        printf("Disk Structures Built Success!*************************");
     }
     return 0;
 }
 
-int LoadDiskFile(FILE* pFile, )
 Disk::Disk()
 {
     printf("constructing disk\n");
     this->fileNamePattern = regex("^([A-Z]|[a-z]|[-+_/.]|[0-9])*$");
-    FILE* pFile;
-    OpenDiskFile(pFile);
-    if(errCode!=0){printf("Disk Open Fails!\n"); return -1;}
+    //pSuperBlock = new SuperBlock(); // 如果已有磁盘，这部分会被从文件读取的数据Override
+    FILE *tempFilePtr; 
+    OpenDiskFile(&tempFilePtr);
+    LoadDiskFile(&tempFilePtr);
+    this->pFile = tempFilePtr;
 
+
+
+
+
+    printf("closing file\n");
+    fclose(pFile);
 
 }
 

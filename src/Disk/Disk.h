@@ -1,8 +1,5 @@
 #pragma once
-#include<string>
-#include <regex>
-#include"SuperBlock.h"
-#include"INode.h"
+#include"BlockManager.h"
 #include"utils.h"
 #include"MACROS.h"
 
@@ -11,17 +8,23 @@ using namespace std;
 
 class Disk {
 public:
+    FILE* pFile;
+
     Disk();
     ~Disk();
     int run();
     string getWelcomeMessage();
-    // INode* 
+    //int ConstructingDisk(FILE** , SuperBlock*); //指针引用传值
+    int CreateDiskFile(FILE** );
+    int OpenDiskFile(FILE** );
+    int LoadDiskFile(FILE** );
+    int SetCurrentInode(int);
+    int InitRootDirectory(FILE** );
+    // Inode* 
 private:
-    INode* pINode;
-    char* pDiskStart;
-    SuperBlock* pSuperBlock;
-    char* pINodeBitMap;
-    char* pDataBitMap;
-    char* pDataStart;
+    Inode oCurrInode;
+    SuperBlock oSuperBlock;
+    Block oBlock;
+    BlockManager oBlockManager;
     regex fileNamePattern;
 };

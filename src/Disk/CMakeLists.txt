@@ -7,4 +7,5 @@ include_directories(
 )
 
 aux_source_directory(. SOURCE)
+#list(REMOVE_ITEM SOURCE "Itemp.cpp")
 add_executable(DiskT ${SOURCE})
