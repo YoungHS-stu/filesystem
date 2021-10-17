@@ -5,9 +5,16 @@ class Block{
 public:
     Address next; //3 bytes
 	unsigned char content[INITIAL_DATA_BLOCK_SIZE]; //1021 bytes
-	Block() {refreshContent();}
-	Block(int addrInt) {load(addrInt);}
-	Block(Address addr) {load(addr);}
+	Block() {memset(content, 0, INITIAL_DATA_BLOCK_SIZE);}
+	Block(int addrInt) {
+		Block();
+		next = Address(addrInt);
+	}
+	
+	Block(Address addr) {
+		Block();
+		next = addr;
+	}
 	
     void refreshContent() {memset(content, 0, sizeof content);}
 

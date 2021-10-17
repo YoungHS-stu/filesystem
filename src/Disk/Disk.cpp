@@ -1,12 +1,20 @@
 #include"Disk.h"
-int Disk::InitRootDirectory(FILE** )
+int Disk::InitRootDirectory(FILE** pFile)
 {
     printf_src("Initializing Root Directory");
     Directory rootDir;
     rootDir.vFiles.push_back(File(".",0));
     rootDir.vFiles.push_back(File("..",0));
     size_t DirSize = rootDir.vFiles.size() * sizeof(File);
-    
+    printf_src("Root dir size");
+    int inodeId = oBlockManager.GetNextFreeInode(*pFile);
+    int addrInt = oBlockManager.GetNextFreeBlock(*pFile);
+    Address addr = Address(addrInt);
+    Inode inode = Inode(DirSize, inodeId, addr, true);
+    Block block = Block(0);
+    memcpy(block.content, &rootDir, DirSize);
+    oBlockManager.WriteNewBlock(*pFile, addr, block);
+    oBlockManager.WriteNewInode(*pFile, inode);
     return 0;
 }
 

@@ -2,26 +2,26 @@
 #include<string>
 #include<vector>
 #include <sstream>
+#include"FileManger.h"
 
-using namespace std;
 
 int main()
 {
-    cout << "------------Welcome to Young File System------------" << endl;
+    std::cout << "------------Welcome to Young File System------------" << std::endl;
     bool bRunning = true;
-    string sInput;
-    string sCurrentDir = "/";
-    string sCurrentUser = "root";
-    vector<string> vCmdTokens;
-
+    std::string sInput;
+    std::string sCurrentDir = "/";
+    std::string sCurrentUser = "root";
+    std::vector<std::string> vCmdTokens;
+    FileManger fm;
     while (bRunning)
     {
-        string sCmdHeader = "["+sCurrentUser+"@YFS "+sCurrentUser+"]$ ";
-        cout << sCmdHeader;
-        getline(cin, sInput);
+        std::string sCmdHeader = "["+sCurrentUser+"@YFS "+sCurrentUser+"]$ ";
+        std::cout << sCmdHeader;
+        getline(std::cin, sInput);
         // use istringstream to separate input words with whitespace as delimiters
-        istringstream inputStream(sInput);
-        string sToken;
+        std::istringstream inputStream(sInput);
+        std::string sToken;
         while (inputStream >> sToken) { vCmdTokens.push_back(sToken);}
         if (vCmdTokens.empty())
         {
@@ -31,20 +31,41 @@ int main()
             if (vCmdTokens.size() == 1) {
                 bRunning = false;
             }
-            cout << sCmdHeader << "Command not found! Do you mean 'exit' ?\n" ;
+            std::cout << sCmdHeader << "Command not found! Do you mean 'exit' ?\n" ;
         }
         else if (vCmdTokens[0] == "dir" || vCmdTokens[0] == "ls") {
-            cout << "list all" << endl;
+            std::cout << "list all" << std::endl;
         }
-
-
-        // for(string token : vCmdTokens) {
-        //     cout << token << " | ";
-        // }
-        // cout << endl;
+        else if (vCmdTokens[0] == "cd") {
+            fm.ChangeDirectory();
+        }
+        else if (vCmdTokens[0] == "mkdir") {
+            fm.CreateDirectory();
+        }
+        else if (vCmdTokens[0] == "rmdir") {
+            fm.DeleteDirectory();
+        }
+        else if (vCmdTokens[0] == "newfile") {
+            fm.CreateFile();
+        }
+        else if (vCmdTokens[0] == "cp") {
+            fm.CopyFile();    
+        }
+        else if (vCmdTokens[0] == "cat") {
+            fm.OpenFile();   
+        }
+        else if (vCmdTokens[0] == "info") {
+            fm.PrintDiskInfo();    
+        }
+        else if (vCmdTokens[0] == "check") {
+            fm.SystemCheck();    
+        }
+        else if (vCmdTokens[0] == "help") {
+            fm.PrintHelp();
+        }
         vCmdTokens.clear();
     }
     
-    cout << "Bye~" << endl;
+    std::cout << "Bye~" << std::endl;
     return 0;
 }
