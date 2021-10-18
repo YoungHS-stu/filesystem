@@ -1,22 +1,42 @@
-class FileManger
+#pragma once
+#include"Disk.h"
+class FileManager
 {
 public:
-    FileManger(/* args */);
-    ~FileManger();
-    int CreateFile(); //newfile
-    int OpenFile(); // cat
-    int DeleteFile(); //rm
-    int CopyFile(); //cp
+    Disk disk;
+	char userInput[1024];
+    std::vector<std::string> vCmdTokens;
+    std::string sResponse;
+    std::map<std::string,int> mapUserToId;
+    std::map<int,HANDLE*> mapIdToIPC;
+    std::regex fileNamePattern;
+    FileManager(/* args */);
+    ~FileManager();
+    int myCreateFile(); //newfile
+    int myOpenFile(); // cat
+    int myDeleteFile(); //rm
+    int myCopyFile(); //cp
 
-    int CreateDirectory();//mkdir
-    int DeleteDirectory();//rmdir
-    int ChangeDirectory();//cd
-    int PrintWorkingDirectory();//pwd
-    int ListDirectory(); // ls or dir
+    int myCreateDirectory(char* path);//mkdir
+    int myDeleteDirectory();//rmdir
+    int myChangeDirectory();//cd
+    int myPrintWorkingDirectory();//pwd
+    int myListDirectory(); // ls or dir
 
-    int PrintDiskInfo(); // info
+    std::string GetWorkingDirectory();
+    void PrintDiskInfo(); // info
+    void PrintHelp(); //help
     int SystemCheck(); // check
-    int PrintHelp(); //help
+    int WriteCmdTokens();
+    int ReadCmdTokens();
+
+    int AllocateIPC(HANDLE*);
+    int ListenToIPC(HANDLE*);
+    int ReadIPC(HANDLE*);
+    int WriteIPC(HANDLE*);
+    void CmdParser();
+    void run();
+    int SplitStringIntoVector(const std::string& , const std::string&, std::vector<std::string>&);
 };
 
 

@@ -7,20 +7,20 @@ int Disk::InitRootDirectory(FILE** pFile)
     rootDir.vFiles.push_back(File("..",0));
     size_t DirSize = rootDir.vFiles.size() * sizeof(File);
     printf_src("Root dir size");
-    int inodeId = oBlockManager.GetNextFreeInode(*pFile);
-    int addrInt = oBlockManager.GetNextFreeBlock(*pFile);
+    int inodeId = oBlockManager.GetNextFreeInode();
+    int addrInt = oBlockManager.GetNextFreeBlock();
     Address addr = Address(addrInt);
     Inode inode = Inode(DirSize, inodeId, addr, true);
     Block block = Block(0);
     memcpy(block.content, &rootDir, DirSize);
-    oBlockManager.WriteNewBlock(*pFile, addr, block);
-    oBlockManager.WriteNewInode(*pFile, inode);
+    oBlockManager.WriteNewBlock(addr, block);
+    oBlockManager.WriteNewInode(inode);
     return 0;
 }
 
 int Disk::SetCurrentInode(int inode_id)
 {
-    
+    Inode inode = oBlockManager.ReadInode(inode_id);
     return 0;
 }
 
@@ -34,6 +34,8 @@ int Disk::LoadDiskFile(FILE** pFile) {
     //-2 set init inode
     r = SetCurrentInode(0);
     if(r!=0) {printf("Set Initiail Inode Failed\n"); return -2;} 
+
+    
     return 0;
 }
 
@@ -72,6 +74,9 @@ int Disk::OpenDiskFile(FILE** pFile)
         errCode = CreateDiskFile(pFile);
         if(errCode!=0){printf("Disk Create Fails!\n"); return -1;}
         // -2 构建磁盘结构
+        BlockManager tempManager;
+        memcpy(tempManager.pFile, *pFile, sizeof(tempManager.pFile));
+
         oBlockManager.InitializeDiskBlocks(&oSuperBlock, pFile);
         if(errCode!=0){printf("Disk Construction Fails!\n"); return -1;}
         InitRootDirectory(pFile);
@@ -83,17 +88,15 @@ int Disk::OpenDiskFile(FILE** pFile)
 Disk::Disk()
 {
     printf("constructing disk\n");
-    this->fileNamePattern = regex("^([A-Z]|[a-z]|[-+_/.]|[0-9])*$");
     //pSuperBlock = new SuperBlock(); // 如果已有磁盘，这部分会被从文件读取的数据Override
     FILE *tempFilePtr; 
     OpenDiskFile(&tempFilePtr);
-    LoadDiskFile(&tempFilePtr);
-    this->pFile = tempFilePtr;
 
-
-
-
-
+    oBlockManager = BlockManager();
+    memcpy(pFile, tempFilePtr, sizeof(tempFilePtr));
+    memcpy(oBlockManager.pFile, tempFilePtr, sizeof(tempFilePtr));
+    LoadDiskFile(&pFile);
+    
     printf("closing file\n");
     fclose(pFile);
 
@@ -106,5 +109,5 @@ int Disk::run(){
 
 Disk::~Disk()
 {
-    printf("bye disk~");
+    printf("Disk closes successfully");
 }

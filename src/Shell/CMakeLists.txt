@@ -9,5 +9,6 @@ include_directories(
 )
 
 aux_source_directory(. SOURCE)
+aux_source_directory(../FileManager SOURCE)
 #list(REMOVE_ITEM SOURCE "Itemp.cpp")
 add_executable(Shell ${SOURCE})

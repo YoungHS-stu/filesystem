@@ -1,10 +1,10 @@
-#include"Disk.h"
+// #include"Disk.h"
 
-using namespace std;
+// using namespace std;
 
-int main(){
-    Disk disk;
-    disk.run();
-    cout << "tester" <<endl;
-    return 0;
-}
+// int main(){
+//     Disk disk;
+//     disk.run();
+//     cout << "tester" <<endl;
+//     return 0;
+// }

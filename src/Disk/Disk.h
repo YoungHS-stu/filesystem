@@ -22,9 +22,8 @@ public:
     int InitRootDirectory(FILE** );
     // Inode* 
 private:
-    Inode oCurrInode;
+    Inode oCurrentInode;
     SuperBlock oSuperBlock;
     Block oBlock;
     BlockManager oBlockManager;
-    regex fileNamePattern;
 };

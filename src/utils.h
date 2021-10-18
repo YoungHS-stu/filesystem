@@ -7,15 +7,18 @@
 #include<stack>
 #include<regex>
 #include<time.h>
+#include<windows.h>
 #include"MACROS.h"
 
 #define VERBOSE true
 #define STEPS true
+#define SHOW_ERR_MSG true
 #define filename(x) strrchr(x,'\\')?strrchr(x,'\\')+1:x
 #define __SOURCE__ std::string(filename(__FILE__)) + "| " + std::string(__FUNCTION__) + ": " + std::to_string(__LINE__)
 
 #define printf_v(format, argv...) if(VERBOSE) {printf(format, ##argv);} 
 #define printf_src(format, argv...) if(STEPS) {printf("[%s]: ",std::string(__SOURCE__).c_str()); printf(format, ##argv);}
+#define printf_err(format, argv...) if(SHOW_ERR_MSG) {printf_src("Error: "); printf(format, ##argv); printf("!\n");}
 
 #define Fseek(pFile, offSet, fromWhere, argv...) _Fseek(pFile, offSet, fromWhere, __SOURCE__, ##argv);
 #define Fopen(pFile, name, mode, argv...) _Fopen(pFile, name, mode, __SOURCE__, ##argv);

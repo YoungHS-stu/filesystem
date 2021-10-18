@@ -13,7 +13,7 @@ int main()
     std::string sCurrentDir = "/";
     std::string sCurrentUser = "root";
     std::vector<std::string> vCmdTokens;
-    FileManger fm;
+    FileManager fm;
     while (bRunning)
     {
         std::string sCmdHeader = "["+sCurrentUser+"@YFS "+sCurrentUser+"]$ ";
@@ -22,21 +22,21 @@ int main()
         // use istringstream to separate input words with whitespace as delimiters
         std::istringstream inputStream(sInput);
         std::string sToken;
+        std::string fmResponse;
         while (inputStream >> sToken) { vCmdTokens.push_back(sToken);}
         if (vCmdTokens.empty())
         {
             continue;
         }
         if (vCmdTokens[0] == "exit") {
-            if (vCmdTokens.size() == 1) {
-                bRunning = false;
-            }
-            std::cout << sCmdHeader << "Command not found! Do you mean 'exit' ?\n" ;
+            if (vCmdTokens.size() == 1) {bRunning = false;}
+            else {std::cout << sCmdHeader << "Command not found! Do you mean 'exit' ?\n" ;}
         }
         else if (vCmdTokens[0] == "dir" || vCmdTokens[0] == "ls") {
             std::cout << "list all" << std::endl;
         }
         else if (vCmdTokens[0] == "cd") {
+            
             fm.ChangeDirectory();
         }
         else if (vCmdTokens[0] == "mkdir") {

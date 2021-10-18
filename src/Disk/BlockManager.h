@@ -10,6 +10,7 @@ class BlockManager
 public:
     Address freeptr;
     SuperBlock oSuperBlock;
+    FILE* pFile;
     BlockManager() {}; 
     ~BlockManager() {};
     void InitializeDiskBlocks(SuperBlock* pSuperBlock, FILE** pFile) {
@@ -80,7 +81,7 @@ public:
         printf("---------------InitializeDiskBlocks Done------------------\n");
     }
 
-    int ReadBlock(FILE* pFile, Address addr){
+    int ReadBlock(Address addr){
         int addr_int = addr.to_int();
         Block block;
         Fseek(pFile, oSuperBlock.iDataBlockStart + addr_int * BLOCK_SIZE, SEEK_SET);
@@ -88,37 +89,37 @@ public:
         return 0;
     }
 
-    int WriteBlock(FILE* pFile, Address addr, Block block){
+    int WriteBlock(Address addr, Block block){
         int addr_int = addr.to_int();
         Fseek(pFile, oSuperBlock.iDataBlockStart + addr_int * BLOCK_SIZE, SEEK_SET);
         Fwrite(&block, sizeof(block), 1, pFile);
         return 0;
     }
 
-    int WriteNewBlock(FILE* pFile, Address addr, Block block) {
-        errno_t r = WriteBlock(pFile, addr, block);
+    int WriteNewBlock(Address addr, Block block) {
+        errno_t r = WriteBlock(addr, block);
         if(r==0) {
             oSuperBlock.iDataBlockFreeN--;
-            UpdateDataBlockBitmap(pFile, addr, false);
+            UpdateDataBlockBitmap(addr, false);
         }
         return 0;
     }
 
-    int ClearBlock(FILE* pFile, Address addr) {
+    int ClearBlock(Address addr) {
         int addr_int = addr.to_int();
         Block block;
         memset(block.next.addr, 'D', sizeof(block.next.addr));
         memset(block.content, 'd', sizeof(block.content));
-        errno_t r = WriteBlock(pFile, addr, block);
+        errno_t r = WriteBlock(addr, block);
         if(r==0) {
             oSuperBlock.iDataBlockFreeN++;
-            UpdateDataBlockBitmap(pFile, addr, true);
+            UpdateDataBlockBitmap(addr, true);
         }
         return 0;
     }
 
     // 查看inode-bitmap
-    int GetNextFreeInode(FILE* pFile) {
+    int GetNextFreeInode() {
         Fseek(pFile, oSuperBlock.iInodeBitMapStart, SEEK_SET);
         char map[oSuperBlock.iInodeN]; 
         Fread(map, sizeof(map), 1, pFile);
@@ -130,7 +131,7 @@ public:
         return -1;
     }
 
-    int UpdateInodeBitmap(FILE* pFile, int InodeId, bool isFree) {
+    int UpdateInodeBitmap(int InodeId, bool isFree) {
         Fseek(pFile, oSuperBlock.iInodeBitMapStart, SEEK_SET);
         char map[oSuperBlock.iInodeN]; 
         Fread(map, sizeof(map), 1, pFile);
@@ -142,7 +143,7 @@ public:
         return -1;
     }
 
-    int UpdateDataBlockBitmap(FILE* pFile, Address addr, bool isFree) {
+    int UpdateDataBlockBitmap(Address addr, bool isFree) {
         int addr_int = addr.to_int();
         Fseek(pFile, oSuperBlock.iDataBlockBitMapStart, SEEK_SET);
         char map[oSuperBlock.iInodeN]; 
@@ -156,7 +157,7 @@ public:
         
     }
     // 查看data-bitmap
-    int GetNextFreeBlock(FILE* pFile) {
+    int GetNextFreeBlock() {
         Fseek(pFile, oSuperBlock.iDataBlockBitMapStart, SEEK_SET);
         char map[oSuperBlock.iDataBlockN]; 
         Fread(map, sizeof(map), 1, pFile);
@@ -168,36 +169,36 @@ public:
         return -1;
     }
 
-    Inode ReadInode(FILE* pFile, int InodeId) {
+    Inode ReadInode(int InodeId) {
         Inode inode;
         Fseek(pFile, oSuperBlock.iInodeStart + InodeId * sizeof(inode), SEEK_SET);
         Fread(&inode, sizeof(inode), 1, pFile);
         return inode;
     }
 
-    int WriteInode(FILE* pFile, Inode inode) {
+    int WriteInode(Inode inode) {
         Fseek(pFile, oSuperBlock.iInodeStart + inode.iInodeId * sizeof(inode), SEEK_SET);
         Fwrite(&inode, sizeof(inode), 1, pFile);
         return 0;
     }
 
-    int WriteNewInode(FILE* pFile, Inode inode) {
-        errno_t r = WriteInode(pFile, inode);
+    int WriteNewInode(Inode inode) {
+        errno_t r = WriteInode(inode);
         if(r==0) {
             oSuperBlock.iInodeFreeN--;
-            UpdateInodeBitmap(pFile, inode.iInodeId, false);
+            UpdateInodeBitmap(inode.iInodeId, false);
         }
         return 0;
     }
 
-    int ClearNewInode(FILE* pFile, Inode inode) {
+    int ClearNewInode(Inode inode) {
         int inode_id = inode.iInodeId;
         Inode new_inode;
         new_inode.iInodeId = inode_id;
-        errno_t r = WriteInode(pFile, inode);
+        errno_t r = WriteInode(inode);
         if(r==0) {
             oSuperBlock.iInodeFreeN++;
-            UpdateInodeBitmap(pFile, inode.iInodeId, false);
+            UpdateInodeBitmap(inode.iInodeId, false);
         }
         return 0;
     }
