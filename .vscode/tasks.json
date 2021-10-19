@@ -4,15 +4,11 @@
         {
             "label": "build", 
             "type": "shell", 
-            "command": "g++", 
-            "args": [    
-                "${file}", 
-                "-o", 
-                "${workspaceFolder}/src/minishell.exe", 
-                "-g", 
-                "-Wall", 
-                "-static-libgcc",  
-                "-std=c11"
+            "command": "make", 
+            "args": [   
+                "-j8", 
+                "-f",
+                "${workspaceFolder}\\build\\src\\FileManager\\makefile"
             ],
             "group": {  
                 "kind": "build",
@@ -24,7 +20,7 @@
                 "focus": false, 
                 "panel": "new" 
             },
-            "problemMatcher": "$gcc" 
+
         },
         {
             "label": "run", 

@@ -17,6 +17,7 @@ public:
 
 	unsigned int SUPERBLOCK_SIZE; //1kb
 	unsigned int BLOCK_SIZE; //1kb
+	unsigned int DATA_BLOCK_SIZE; //1021b
 	unsigned int INODE_SIZE; //44b
 	unsigned int TOTAL_SIZE; //100mb
 
@@ -43,6 +44,7 @@ public:
 		BLOCK_SIZE = INITIAL_BLOCK_SIZE;
 		INODE_SIZE = INITIAL_INODE_SIZE;
 		TOTAL_SIZE = INITIAL_DISK_SIZE;
+		DATA_BLOCK_SIZE = INITIAL_DATA_BLOCK_SIZE;
 
 		iSuperBlockStart = 0;
 		iUserStart  = iSuperBlockStart + INITIAL_BLOCK_SIZE;

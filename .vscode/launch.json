@@ -26,13 +26,13 @@
         },
 
         {
-            "name": "(gdb) 启动",
+            "name": "(gdb) 公司FM",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}\\src\\minishell.exe",
+            "program": "${workspaceFolder}\\build\\src\\FileManager\\FileManager.exe",
             "args": [],
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}\\src",
+            "cwd": "${workspaceFolder}\\build\\src\\FileManager",
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",

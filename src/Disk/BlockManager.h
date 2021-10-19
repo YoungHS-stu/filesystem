@@ -81,22 +81,21 @@ public:
         printf("---------------InitializeDiskBlocks Done------------------\n");
     }
 
-    int ReadBlock(Address addr){
+    int ReadBlock(Address addr, Block& block){
         int addr_int = addr.to_int();
-        Block block;
         Fseek(pFile, oSuperBlock.iDataBlockStart + addr_int * BLOCK_SIZE, SEEK_SET);
         Fread(&block, sizeof(block), 1, pFile);
         return 0;
     }
 
-    int WriteBlock(Address addr, Block block){
+    int WriteBlock(Address addr, Block& block){
         int addr_int = addr.to_int();
         Fseek(pFile, oSuperBlock.iDataBlockStart + addr_int * BLOCK_SIZE, SEEK_SET);
         Fwrite(&block, sizeof(block), 1, pFile);
         return 0;
     }
 
-    int WriteNewBlock(Address addr, Block block) {
+    int WriteNewBlock(Address addr, Block& block) {
         errno_t r = WriteBlock(addr, block);
         if(r==0) {
             oSuperBlock.iDataBlockFreeN--;
@@ -135,7 +134,7 @@ public:
         Fseek(pFile, oSuperBlock.iInodeBitMapStart, SEEK_SET);
         char map[oSuperBlock.iInodeN]; 
         Fread(map, sizeof(map), 1, pFile);
-        if (InodeId < sizeof(map)) { printf("InodeId too large"); return -2;}
+        if (InodeId < sizeof(map)) { printf_err("InodeId:%d too large"); return -2;}
         if (isFree == true) {map[InodeId] = 'F';}
         else {map[InodeId] = 'N';}
         Fseek(pFile, oSuperBlock.iInodeBitMapStart, SEEK_SET);

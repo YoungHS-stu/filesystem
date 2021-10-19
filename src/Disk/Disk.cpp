@@ -1,32 +1,33 @@
 #include"Disk.h"
 int Disk::InitRootDirectory(FILE** pFile)
 {
-    printf_src("Initializing Root Directory");
+    printf_src("Initializing Root Directory\n");
     Directory rootDir;
     rootDir.vFiles.push_back(File(".",0));
     rootDir.vFiles.push_back(File("..",0));
     size_t DirSize = rootDir.vFiles.size() * sizeof(File);
-    printf_src("Root dir size");
+    printf_src("Root dir size\n");
+
     int inodeId = oBlockManager.GetNextFreeInode();
     int addrInt = oBlockManager.GetNextFreeBlock();
-    Address addr = Address(addrInt);
-    Inode inode = Inode(DirSize, inodeId, addr, true);
+
+    Address blockAddr = Address(addrInt);
+    Inode inode = Inode(DirSize, inodeId, blockAddr, true);
     Block block = Block(0);
     memcpy(block.content, &rootDir, DirSize);
-    oBlockManager.WriteNewBlock(addr, block);
+    oBlockManager.WriteNewBlock(blockAddr, block);
     oBlockManager.WriteNewInode(inode);
     return 0;
 }
 
 int Disk::SetCurrentInode(int inode_id)
 {
-    Inode inode = oBlockManager.ReadInode(inode_id);
+    oCurrentInode = oBlockManager.ReadInode(inode_id);
     return 0;
 }
 
 int Disk::LoadDiskFile(FILE** pFile) {
-    printf_src("Begin");
-    printf_src("Load SuperBlock");
+    printf_src("Begin Load SuperBlock\n");
     Fseek(*pFile, 0L, SEEK_SET);
     errno_t r = Fread(&oSuperBlock, sizeof(oSuperBlock), 1, *pFile);
     if(r!=1) {printf("Load SuperBlock Failed\n"); return -1;} //1为正常值，模仿的原生逻辑
@@ -34,8 +35,12 @@ int Disk::LoadDiskFile(FILE** pFile) {
     //-2 set init inode
     r = SetCurrentInode(0);
     if(r!=0) {printf("Set Initiail Inode Failed\n"); return -2;} 
-
-    
+    printf("Set Initiail Inode Successful!\n");
+    printf("Root inode id:%d\n", oCurrentInode.iInodeId);
+    printf("Root inode create time:%s\n", oCurrentInode.GetCreatedTimeStr().c_str());
+    printf("Root inode access time:%s\n", oCurrentInode.GetAccessedTimeStr().c_str());
+    printf("Root inode modify time:%s\n", oCurrentInode.GetModifiedTimeStr().c_str());
+    printf("Root file size:%d\n", oCurrentInode.fileSize);
     return 0;
 }
 
@@ -74,36 +79,34 @@ int Disk::OpenDiskFile(FILE** pFile)
         errCode = CreateDiskFile(pFile);
         if(errCode!=0){printf("Disk Create Fails!\n"); return -1;}
         // -2 构建磁盘结构
-        BlockManager tempManager;
-        memcpy(tempManager.pFile, *pFile, sizeof(tempManager.pFile));
+        
 
+        //memcpy(&tempManager.pFile, &(*pFile), sizeof(tempManager.pFile));
+        oBlockManager.pFile = *pFile;
         oBlockManager.InitializeDiskBlocks(&oSuperBlock, pFile);
         if(errCode!=0){printf("Disk Construction Fails!\n"); return -1;}
         InitRootDirectory(pFile);
-        printf("Disk Structures Built Success!*************************");
+        printf("Disk Structures Built Success!*************************\n");
     }
     return 0;
 }
 
 Disk::Disk()
 {
+    
+}
+
+int Disk::run(){
     printf("constructing disk\n");
     //pSuperBlock = new SuperBlock(); // 如果已有磁盘，这部分会被从文件读取的数据Override
     FILE *tempFilePtr; 
     OpenDiskFile(&tempFilePtr);
 
-    oBlockManager = BlockManager();
-    memcpy(pFile, tempFilePtr, sizeof(tempFilePtr));
-    memcpy(oBlockManager.pFile, tempFilePtr, sizeof(tempFilePtr));
+    this->pFile = tempFilePtr;
+    this->oBlockManager.pFile = tempFilePtr;
+    //memcpy(pFile, tempFilePtr, sizeof(tempFilePtr));
+    //memcpy(oBlockManager.pFile, tempFilePtr, sizeof(tempFilePtr));
     LoadDiskFile(&pFile);
-    
-    printf("closing file\n");
-    fclose(pFile);
-
-}
-
-int Disk::run(){
-    cout<< "Disk running begin" <<endl;
     return 0;
 }
 

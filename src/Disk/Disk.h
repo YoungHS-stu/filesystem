@@ -21,7 +21,6 @@ public:
     int SetCurrentInode(int);
     int InitRootDirectory(FILE** );
     // Inode* 
-private:
     Inode oCurrentInode;
     SuperBlock oSuperBlock;
     Block oBlock;

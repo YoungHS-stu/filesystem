@@ -10,7 +10,7 @@
 #include<windows.h>
 #include"MACROS.h"
 
-#define VERBOSE true
+#define VERBOSE false 
 #define STEPS true
 #define SHOW_ERR_MSG true
 #define filename(x) strrchr(x,'\\')?strrchr(x,'\\')+1:x

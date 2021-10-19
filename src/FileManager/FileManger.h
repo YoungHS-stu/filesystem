@@ -26,6 +26,7 @@ public:
     std::string GetWorkingDirectory();
     void PrintDiskInfo(); // info
     void PrintHelp(); //help
+    void PrintWelcomeInfo();
     int SystemCheck(); // check
     int WriteCmdTokens();
     int ReadCmdTokens();
@@ -37,6 +38,15 @@ public:
     void CmdParser();
     void run();
     int SplitStringIntoVector(const std::string& , const std::string&, std::vector<std::string>&);
+
+    unsigned GetInodeIdFromPath(std::string );
+    unsigned GetDirectorySizeFromInode(Inode );
+    std::string GetFullFilePath(Inode);
+    std::string GetFileFromInode(Inode);
+    std::string GetFileNameFromInode(Inode );
+    void RecursiveDeleteDirectory(Inode );
+    int WriteFilesToDirectoryFile(Directory,Inode);
+    Directory ReadFilesFromDirectoryFile(Inode);
 };
 
 

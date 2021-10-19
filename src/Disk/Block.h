@@ -4,7 +4,7 @@
 class Block{
 public:
     Address next; //3 bytes
-	unsigned char content[INITIAL_DATA_BLOCK_SIZE]; //1021 bytes
+	char content[INITIAL_DATA_BLOCK_SIZE]; //1021 bytes
 	Block() {memset(content, 0, INITIAL_DATA_BLOCK_SIZE);}
 	Block(int addrInt) {
 		Block();
