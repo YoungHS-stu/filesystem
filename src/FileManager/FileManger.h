@@ -12,14 +12,14 @@ public:
     std::regex fileNamePattern;
     FileManager(/* args */);
     ~FileManager();
-    std::string myCreateFile(); //newfile
+    std::string myCreateFile(char*, int); //newfile
     std::string myOpenFile(); // cat
     std::string myDeleteFile(); //rm
     std::string myCopyFile(); //cp
 
-    std::string myCreateDirectory(char* path);//mkdir
+    std::string myCreateDirectory(char*);//mkdir
     std::string myDeleteDirectory();//rmdir
-    std::string myChangeDirectory();//cd
+    std::string myChangeDirectory(char*);//cd
     std::string myPrintWorkingDirectory();//pwd
     std::string myListDirectory(); // ls or dir
 
@@ -39,7 +39,7 @@ public:
     void run();
     int SplitStringIntoVector(const std::string& , const std::string&, std::vector<std::string>&);
 
-    unsigned GetInodeIdFromPath(std::string );
+    int GetInodeIdFromPath(std::string );
     unsigned GetDirectorySizeFromInode(Inode );
     std::string GetFullFilePath(Inode);
     std::string GetFileFromInode(Inode);

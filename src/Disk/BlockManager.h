@@ -169,15 +169,18 @@ public:
     }
 
     Inode ReadInode(int InodeId) {
+        if(InodeId<0) {printf_err("inode id must be greater than 0");}
         Inode inode;
         Fseek(pFile, oSuperBlock.iInodeStart + InodeId * sizeof(inode), SEEK_SET);
         Fread(&inode, sizeof(inode), 1, pFile);
+        inode.UpdateAccessedTime();
         return inode;
     }
 
-    int WriteInode(Inode inode) {
+    int WriteInode(Inode &inode) {
         Fseek(pFile, oSuperBlock.iInodeStart + inode.iInodeId * sizeof(inode), SEEK_SET);
         Fwrite(&inode, sizeof(inode), 1, pFile);
+        inode.UpdateModifiedTime();
         return 0;
     }
 

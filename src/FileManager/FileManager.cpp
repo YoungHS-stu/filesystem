@@ -1,6 +1,8 @@
 #include"FileManger.h"
 
-#define CHECK_REDUNDANT_ARGS  char* redundant = strtok(NULL, " ");if (redundant != NULL) {printf_err("too many arguments");return;}
+#define CHECK_REDUNDANT_ARGS()  char* redundant = strtok(NULL, " ");if (redundant != NULL) {printf_err("more arguments than expected");return;}
+#define CHECK_PATH_ARGS()       char* path = strtok(NULL, " ");if (path == NULL) {printf_err("lack of path");return;}
+#define CHECK_SIZE_ARGS()       char* size = strtok(NULL, " ");if (size == NULL) {printf_err("lack of size");return;} unsigned fileSize = atof(size) * 1024;if (fileSize == 0) {printf("Wrong file size format or file size is 0! Please check again!\n");return;}
 FileManager::FileManager()
 {
 	fileNamePattern = std::regex("^([a-z]|[A-Z]|[_/.]|[0-9])*$");
@@ -40,21 +42,118 @@ int FileManager::ReadCmdTokens()
     return 0;
 }
 
-std::string FileManager::myCreateFile()
+std::string FileManager::myCreateFile(char* path, int filesize)
 {
-    return "";
+    std::string result="";
+    std::vector<std::string> pathList;
+    SplitStringIntoVector(std::string(path), "/", pathList);
+
+    for (size_t i = 0; i < pathList.size(); i++)
+    {
+        if (pathList[i].length() > MAXIMUM_FILENAME_LENGTH - 1) {
+            printf_err("The directory/file name: %s is too long! Maximum length: %d", pathList[i].c_str(), MAXIMUM_FILENAME_LENGTH - 1);
+            return "";
+        }
+    }
+
+    int inode_id_ptr = disk.oCurrentInode.iInodeId;
+    for (size_t i = 0; i < pathList.size(); i++)
+    {
+        Inode inode_ptr = disk.oBlockManager.ReadInode(inode_id_ptr);
+        if (!inode_ptr.bIsDir) {
+            printf("%s is a file! You can not create directory under here!\n", GetFileNameFromInode(inode_ptr).c_str());
+            return "";
+        }
+        Directory dir = ReadFilesFromDirectoryFile(inode_ptr);
+        int nextInode = dir.FindFiles(pathList[i].c_str());
+        if (nextInode != -1) {
+            inode_id_ptr = nextInode;
+        }
+        else {
+            if (i != pathList.size() - 1) {
+                printf("keep parsing");
+            }
+            else {
+            
+                // 一个block就行
+                int remainingSize = filesize;
+                int rwSize = filesize;
+                int inodeId, addrInt; Address blockAddr; Block block; Inode inode; //先声明
+                inodeId = disk.oBlockManager.GetNextFreeInode();
+                inode = Inode(filesize, inodeId, Address(addrInt), disk.oCurrentInode.iInodeId);
+                disk.oBlockManager.WriteNewInode(inode);
+
+                do {
+                    if(filesize > disk.oSuperBlock.DATA_BLOCK_SIZE) {rwSize = disk.oSuperBlock.DATA_BLOCK_SIZE;}
+                    else {rwSize=remainingSize;}
+
+                    addrInt = disk.oBlockManager.GetNextFreeBlock();
+                    printf("new inode: %d, new block:%d\n", inodeId, addrInt);
+                    blockAddr = Address(addrInt);
+                    block = Block(addrInt);
+                    memset(block.content, '+', filesize);
+                    disk.oBlockManager.WriteNewBlock(blockAddr, block);
+                    remainingSize -= rwSize;
+                } while(remainingSize > 0);
+                
+
+                // 写进当前目录，加一个entry
+
+                File newfile = File(pathList[i].c_str(), inode.iInodeId);    
+                dir.vFiles.push_back(newfile);
+                PrintDirectoryFile(dir);
+
+                Address currentAddr = inode_ptr.addrStart;
+                Block block;
+                disk.oBlockManager.ReadBlock(currentAddr, block);
+                
+                if(inode_ptr.fileSize + sizeof(File) < disk.oSuperBlock.DATA_BLOCK_SIZE)
+                {
+
+                }
+                else //当前的不够了，剩余的小部分空间丢弃，新建一个block
+                {
+                    addrInt = disk.oBlockManager.GetNextFreeBlock();
+                    block.next = Address(addrInt);
+                    block=Block(addrInt);
+                }
+                    for (size_t i = 0; i < dir.vFiles.size(); i++)
+                    {
+                        memcpy(block.content+i*sizeof(File), &dir.vFiles[i], sizeof(File));
+                    }
+                    
+                    inode_ptr.fileSize += sizeof(File);
+                    disk.oBlockManager.WriteBlock(currentAddr, block);
+                    disk.oBlockManager.WriteInode(inode_ptr);
+
+                    disk.oCurrentInode = inode_ptr;
+                
+                printf("Create file successfully!\n");
+                return "";
+            }
+
+        }
+    }
+    printf("File already exists!\n");
+    return result;
 }
 std::string FileManager::myOpenFile()
 {
-    return "";
+    std::string result="";
+
+    return result;
 }
 std::string FileManager::myDeleteFile()
 {
-    return "";
+    std::string result="";
+
+    return result;
 }
 std::string FileManager::myCopyFile()
 {
-    return "";
+    std::string result="";
+
+    return result;
 }
 
 std::string FileManager::myCreateDirectory(char* path)
@@ -71,8 +170,7 @@ std::string FileManager::myCreateDirectory(char* path)
             return "";
         }
     }
-
-   
+ 
     for (size_t i = 0; i < vPathList.size(); i++) {
         
         if (!disk.oCurrentInode.bIsDir) {
@@ -93,11 +191,14 @@ std::string FileManager::myCreateDirectory(char* path)
             printf_src("creating new");
             int inodeId = disk.oBlockManager.GetNextFreeInode();
             int addrInt = disk.oBlockManager.GetNextFreeBlock();
+            printf("new inode: %d, new block:%d\n", inodeId, addrInt);
+
             Directory newtDir;
             File temp = File(".",inodeId);
             newtDir.vFiles.push_back(temp);
             temp = File("..",disk.oCurrentInode.iInodeId);
             newtDir.vFiles.push_back(temp);
+
             Address blockAddr = Address(addrInt);
             size_t DirSize = newtDir.vFiles.size() * sizeof(File);
             Block block = Block(0);
@@ -110,18 +211,26 @@ std::string FileManager::myCreateDirectory(char* path)
             disk.oBlockManager.WriteNewInode(inode);
 
             //-2然后写目录到当前目录中
-            printf_src("putting current");
+            printf_src("putting into current\n");
             if(disk.oCurrentInode.fileSize + sizeof(File) < disk.oSuperBlock.DATA_BLOCK_SIZE)
             {
-                File newfile = File(vPathList[i].c_str(),0);
+                File newfile = File(vPathList[i].c_str(),inode.iInodeId);
                 dir.vFiles.push_back(newfile);
-                Block block = Block(0); 
-                for (size_t i = 0; i < newtDir.vFiles.size(); i++)
+                Address currentAddr = disk.oCurrentInode.addrStart;
+                Block dirblock;
+                //disk.oBlockManager.ReadBlock(currentAddr, dirblock);
+
+                PrintDirectoryFile(dir);
+               
+                for (size_t i = 0; i < dir.vFiles.size(); i++)
                 {
-                    memcpy(block.content+i*sizeof(File), &newtDir.vFiles[i], sizeof(File));
+                    memcpy(dirblock.content+i*sizeof(File), &dir.vFiles[i], sizeof(File));
                 }
-                disk.oBlockManager.WriteBlock(disk.oCurrentInode.addrStart, block);
-                disk.oBlockManager.WriteInode(inode);
+                printf("oCurrentInode filesize before: %d\n", disk.oCurrentInode.fileSize);
+                disk.oCurrentInode.fileSize += sizeof(File);
+                printf("oCurrentInode filesize after : %d\n", disk.oCurrentInode.fileSize);
+                disk.oBlockManager.WriteBlock(disk.oCurrentInode.addrStart, dirblock);
+                disk.oBlockManager.WriteInode(disk.oCurrentInode);
             }
 
             if (i == vPathList.size() - 1) {
@@ -132,21 +241,25 @@ std::string FileManager::myCreateDirectory(char* path)
         return "directory already exists\n";
     }
 
-
-
-
-
-
-
     return "";
 }
 std::string FileManager::myDeleteDirectory()
 {
-    return "";
+    std::string result="";
+
+    return result;
 }
-std::string FileManager::myChangeDirectory()
+std::string FileManager::myChangeDirectory(char* path)
 {
-    return "";
+
+    int nextINodeId = GetInodeIdFromPath(path);
+    if(nextINodeId==-1) {return "Directory '"+ std::string(path) +"' not found";}
+
+    Inode nextInode = disk.oBlockManager.ReadInode(nextINodeId);
+    if (!nextInode.bIsDir) return  std::string(path) + "is a file! Not a directory!\n";
+    
+    disk.SetCurrentInode(nextINodeId);
+    return "change directory success";
 }
 std::string FileManager::myPrintWorkingDirectory()
 {
@@ -217,12 +330,8 @@ void FileManager::CmdParser()
 	}
 	
     if (strcmp(command, "mkdir")==0) {
-        char* path = strtok(NULL, " ");
-		if (path == NULL) {
-			printf_err("lack of path");
-			return;
-		}
-        CHECK_REDUNDANT_ARGS;
+        CHECK_PATH_ARGS();
+        CHECK_REDUNDANT_ARGS();
 
         if (!std::regex_match(std::string(path), fileNamePattern))
 		{
@@ -234,41 +343,54 @@ void FileManager::CmdParser()
         printf("%s",myCreateDirectory(path).c_str());
     }
     else if (strcmp(command, "rmdir")==0) {
-        myDeleteDirectory();
+        printf("%s\n",myDeleteDirectory().c_str());
     }
-    else if (strcmp(command, "cd")==0) {
-        myChangeDirectory();
+    else if (strcmp(command, "cd")==0) { //-已完成
+        CHECK_PATH_ARGS();
+        CHECK_REDUNDANT_ARGS();
+
+        printf("%s\n",myChangeDirectory(path).c_str());
     }
     else if (strcmp(command, "pwd")==0) { //-已完成
-        myPrintWorkingDirectory();
+        printf("%s\n",GetWorkingDirectory().c_str());
     }
-    else if (strcmp(command, "dir")==0 || strcmp(command, "ls")==0) {
-        CHECK_REDUNDANT_ARGS;
+    else if (strcmp(command, "dir")==0 || strcmp(command, "ls")==0) { //-已完成
+        CHECK_REDUNDANT_ARGS();
 		printf("Current directory file size: %d\n", disk.oCurrentInode.fileSize);
 
         std::string result = myListDirectory();
         printf("%s\n",result.c_str());
     }
     else if (strcmp(command, "cp")==0) {
-        myCopyFile();
+        printf("%s\n",myCopyFile().c_str());
     }
     else if (strcmp(command, "rmfile")==0) {
-        myDeleteFile();
+        printf("%s\n",myDeleteFile().c_str());
     }
     else if (strcmp(command, "mkfile")==0) {
-        myCreateFile();
+        CHECK_PATH_ARGS();  //char *path在这
+		CHECK_SIZE_ARGS();  //char *size和 unsigned filesize在这
+        CHECK_REDUNDANT_ARGS();
+        if (!std::regex_match(std::string(path), fileNamePattern))
+		{
+			printf("Your file name does not meet the specification. "
+				"The file name can only consist of uppercase or lowercase English letters, numbers or underscores\n");
+			return;
+		}
+        printf("%s",myCreateFile(path, fileSize).c_str());
+        return;
     }
     else if (strcmp(command, "cat")==0) {
-        myOpenFile();
+        printf("%s\n",myOpenFile().c_str());
     }
     else if (strcmp(command, "help")==0) {
-        PrintHelp();
+        printf("%s\n",PrintHelp().c_str());
     }
     else if (strcmp(command, "info")==0) {
-        PrintDiskInfo();
+        printf("%s\n",PrintDiskInfo().c_str());
     }
     else if (strcmp(command, "check")==0) {
-        SystemCheck();
+        printf("%s\n",SystemCheck().c_str());
     }
     else 
     {
@@ -289,9 +411,33 @@ int FileManager::SplitStringIntoVector(const std::string& str, const std::string
 }
 
 
-unsigned FileManager::GetInodeIdFromPath(std::string path)
+int FileManager::GetInodeIdFromPath(std::string path)
 {
-    return 0;
+    std::vector<std::string> pathList;
+    SplitStringIntoVector(path, "/", pathList);    
+    PrintVectorString(pathList);
+    int targetInodeId = disk.oCurrentInode.iInodeId;
+    for (size_t i = 0; i < pathList.size(); i++)
+    {
+        Inode targetInode = disk.oBlockManager.ReadInode(targetInodeId);
+        if (!targetInode.bIsDir)
+        {
+            printf_err("Current directory is a file!")
+            return -2;
+        }
+
+        Directory dir = ReadFilesFromDirectoryFile(targetInode);
+		int nextDirectoryInodeId = dir.FindFiles(pathList[i].c_str());
+		if (nextDirectoryInodeId != -1) {
+            targetInodeId = nextDirectoryInodeId; //找到匹配的
+		}
+		else { 
+			printf("Directory not found: %s\n", pathList[i].c_str());
+			return -1; 
+		}
+    }
+    
+    return targetInodeId;
 }
 unsigned FileManager::GetDirectorySizeFromInode(Inode inode)
 {
