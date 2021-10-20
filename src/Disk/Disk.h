@@ -4,8 +4,6 @@
 #include"MACROS.h"
 
 
-using namespace std;
-
 class Disk {
 public:
     FILE* pFile;
@@ -13,7 +11,7 @@ public:
     Disk();
     ~Disk();
     int run();
-    string getWelcomeMessage();
+    std::string getWelcomeMessage();
     //int ConstructingDisk(FILE** , SuperBlock*); //指针引用传值
     int CreateDiskFile(FILE** );
     int OpenDiskFile(FILE** );

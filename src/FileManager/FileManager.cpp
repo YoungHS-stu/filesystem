@@ -1,5 +1,6 @@
 #include"FileManger.h"
 
+#define CHECK_REDUNDANT_ARGS  char* redundant = strtok(NULL, " ");if (redundant != NULL) {printf_err("too many arguments");return;}
 FileManager::FileManager()
 {
 	fileNamePattern = std::regex("^([a-z]|[A-Z]|[_/.]|[0-9])*$");
@@ -18,11 +19,11 @@ void FileManager::run()
     while (true)
     {
 
-        printf("[%s@YFS%s ]$: ", "root", GetWorkingDirectory().c_str());
+        printf("[%s@YFS %s]$: ", "root", GetWorkingDirectory().c_str());
 		scanf("%[^\n]", &userInput);
         getchar();
         
-	    if (strtok(userInput, " ") == NULL) continue;
+	    //if (strtok(userInput, " ") == NULL) continue;
         if (!strcmp(userInput, "exit"))break;
         if (!strcmp(userInput, "quit"))break;
         CmdParser();
@@ -39,25 +40,26 @@ int FileManager::ReadCmdTokens()
     return 0;
 }
 
-int FileManager::myCreateFile()
+std::string FileManager::myCreateFile()
 {
-    return 0;
+    return "";
 }
-int FileManager::myOpenFile()
+std::string FileManager::myOpenFile()
 {
-    return 0;
+    return "";
 }
-int FileManager::myDeleteFile()
+std::string FileManager::myDeleteFile()
 {
-    return 0;
+    return "";
 }
-int FileManager::myCopyFile()
+std::string FileManager::myCopyFile()
 {
-    return 0;
+    return "";
 }
 
-int FileManager::myCreateDirectory(char* path)
+std::string FileManager::myCreateDirectory(char* path)
 {
+    std::result="";
     printf_src("\n");
     std::vector<std::string> vPathList;
     SplitStringIntoVector(std::string(path), "/", vPathList);
@@ -65,7 +67,7 @@ int FileManager::myCreateDirectory(char* path)
     {
         if (vPathList[i].length() > MAXIMUM_FILENAME_LENGTH - 1) {
             printf_err("The directory/file name: %s is too long! Maximum length: %d", vPathList[i].c_str(), MAXIMUM_FILENAME_LENGTH - 1);
-            return -1;
+            return "";
         }
     }
 
@@ -74,90 +76,124 @@ int FileManager::myCreateDirectory(char* path)
         Inode inode_ptr = disk.oBlockManager.ReadInode(inode_id);
         if (!inode_ptr.bIsDir) {
 				printf("%s is a file! You can not create directory under here!\n", GetFileNameFromInode(inode_ptr).c_str());
-				return -1;
+				return "";
 		}
+        Directory dir = ReadFilesFromDirectoryFile(inode_ptr);
+        int nextDirInodeId = dir.FindFiles(vPathList[i].c_str());
+        if(nextDirInodeId != -1);//找到了目录
+        {
+            inode_id = nextDirInodeId;
+        }
+        else{ //没有找到
+            s
 
+            if (i == pathList.size() - 1) {
+                printf("create directory successfully!\n");
+                return;
+		    }
+        }
+        printf("directory already exists\n")
     }
 
-    return 0;
+
+
+
+
+
+
+    return "";
 }
-int FileManager::myDeleteDirectory()
+std::string FileManager::myDeleteDirectory()
 {
-    return 0;
+    return "";
 }
-int FileManager::myChangeDirectory()
+std::string FileManager::myChangeDirectory()
 {
-    return 0;
+    return "";
 }
-int FileManager::myPrintWorkingDirectory()
+std::string FileManager::myPrintWorkingDirectory()
 {
     printf("%s\n",GetWorkingDirectory().c_str());
-    return 0;
+    return "";
 }
 
 std::string FileManager::GetWorkingDirectory() {
     return GetFullFilePath(disk.oCurrentInode);
 }
-int FileManager::myListDirectory()
+std::string FileManager::myListDirectory()
 {
-    return 0;
+    std::string result = "";
+	Directory dir = ReadFilesFromDirectoryFile(disk.oCurrentInode);
+    result += "File(s) and directory(s) of " + GetFullFilePath(disk.oCurrentInode)
+            + "\nFile Name\tFile Size\tFile Type\tCreate Time\t\t\tModified Time\t\t\tInode ID\n";
+
+    std::string fileName;
+    Inode fileInode;
+
+    for (size_t i = 0; i < dir.vFiles.size(); i++)
+    {
+        fileName = dir.vFiles[i].fileName;
+        fileInode = disk.oBlockManager.ReadInode(dir.vFiles[i].InodeId);
+        for (size_t j = 0; j < (int)ceil((double)fileName.size() / 14); j++)
+		{
+			if (j == 0) {
+                result += fileName.substr(0,14);
+                result += fileName.size() >= 8 ? "\t" : "\t\t";
+                result += std::to_string(fileInode.fileSize) + " B\t\t";
+                if(fileInode.bIsDir) result += "Dir";
+                else result += "File";
+                result += "\t\t" + fileInode.GetCreatedTimeStr();
+                result += "\t"   + fileInode.GetModifiedTimeStr();
+                result += "\t"   + std::to_string(fileInode.iInodeId) + "\n";
+            }
+            else {
+                result += fileName.substr(j * 14, 14) + "\n";
+            }
+        }
+    }
+    result += "\n";
+    return result;
 }
 
-void FileManager::PrintDiskInfo()
+std::string FileManager::PrintDiskInfo()
 {
+    return "";
     
 }
 
-void FileManager::PrintHelp()
+std::string FileManager::PrintHelp()
 {
-    
+    return "";
 }
 
-int FileManager::SystemCheck()
+std::string FileManager::SystemCheck()
 {
-    return 0;
+        return "";
 }
 
-int FileManager::AllocateIPC(HANDLE*)
-{
-    return 0;
-}
-int FileManager::ListenToIPC(HANDLE*)
-{
-    return 0;
-}
-int FileManager::ReadIPC(HANDLE*)
-{
-    return 0;
-}
-int FileManager::WriteIPC(HANDLE*)
-{
-    return 0;
-}
+
 void FileManager::CmdParser()
 {
     char* command = strtok(userInput, " ");
 	if (command == NULL) {
-		//printf_err("no command");
 		return;
 	}
+	
     if (strcmp(command, "mkdir")==0) {
         char* path = strtok(NULL, " ");
 		if (path == NULL) {
 			printf_err("lack of path");
 			return;
 		}
-        char* redundant = strtok(NULL, " ");
-		if (redundant != NULL) {
-			printf_err("too many arguments");
-			return;
-		}
+        CHECK_REDUNDANT_ARGS;
+
         if (!std::regex_match(std::string(path), fileNamePattern))
 		{
 			printf_err("Your directory name does not meet the regex specification '^([a-z]|[A-Z]|[_/.]|[0-9])*$' "
 				"The file name can only consist of uppercase or lowercase English letters, numbers or underscores");
 			return;
 		}
+        printf_src("creating dir with path:%s\n", path);
         myCreateDirectory(path);
     }
     else if (strcmp(command, "rmdir")==0) {
@@ -166,11 +202,15 @@ void FileManager::CmdParser()
     else if (strcmp(command, "cd")==0) {
         myChangeDirectory();
     }
-    else if (strcmp(command, "pwd")==0) {
+    else if (strcmp(command, "pwd")==0) { //-已完成
         myPrintWorkingDirectory();
     }
     else if (strcmp(command, "dir")==0 || strcmp(command, "ls")==0) {
-        myListDirectory();
+        CHECK_REDUNDANT_ARGS;
+		printf("Current directory file size: %d\n", disk.oCurrentInode.fileSize);
+
+        std::string result = myListDirectory();
+        printf("%s\n",result.c_str());
     }
     else if (strcmp(command, "cp")==0) {
         myCopyFile();
@@ -228,7 +268,7 @@ std::string FileManager::GetFileFromInode(Inode)
 
 std::string FileManager::GetFileNameFromInode(Inode inode) {
     if (inode.iInodeId == 0) {
-		return string("");
+		return std::string("");
 	}
 	Inode parentInode = disk.oBlockManager.ReadInode(inode.iParent);
 	Directory parentDir = ReadFilesFromDirectoryFile(parentInode);
@@ -236,7 +276,7 @@ std::string FileManager::GetFileNameFromInode(Inode inode) {
 	for (size_t i = 0; i < parentDir.vFiles.size(); i++)
 	{
 		if (parentDir.vFiles[i].InodeId == inode.iInodeId)
-			return string(parentDir.vFiles[i].fileName);
+			return std::string(parentDir.vFiles[i].fileName);
 	}
 	printf_err("No such file or directory!");
 	return "";
@@ -253,38 +293,66 @@ int FileManager::WriteFilesToDirectoryFile(Directory dir, Inode inode)
 }
 Directory FileManager::ReadFilesFromDirectoryFile(Inode inode)
 {
-    Directory dir; //dir 存着文件列表
-	File file;
     size_t fileSize = inode.fileSize; //文件大小
+    Directory dir; //dir 存着文件列表
+    File tempFile = File("-",999);
+
+	File file;
     size_t remainingSize = fileSize; // 还未读取的大小
     size_t readSize = 0;
+    size_t pos = 0;
     std::string allContent = "";
 
     Address currentAddr = inode.addrStart;
     Block block;
-    do
-    {
-        disk.oBlockManager.ReadBlock(currentAddr, block);
-        //do something
-        if(remainingSize > disk.oSuperBlock.DATA_BLOCK_SIZE){readSize = disk.oSuperBlock.DATA_BLOCK_SIZE;}
-        else {readSize = remainingSize;}
+    // do
+    // {
 
-        allContent += std::string(block.content, readSize);
-        remainingSize -= readSize;
-        currentAddr = block.next;
-    } while (currentAddr.to_int() != 0);
-        
-    for (size_t i = 0; i < (fileSize / sizeof(file)); i++)
+        //do something
+        // if(remainingSize > disk.oSuperBlock.DATA_BLOCK_SIZE){readSize = disk.oSuperBlock.DATA_BLOCK_SIZE;}
+        // else {readSize = remainingSize;}
+
+        disk.oBlockManager.ReadBlock(currentAddr, block);
+        int offset;
+        int numOfFiles = fileSize/sizeof(File);
+        for(size_t i = 0; i < numOfFiles; i++)
         {
-            memcpy(&file, &allContent + i*sizeof(file), sizeof(File));
-            dir.vFiles.push_back(file);    
+            offset = i*sizeof(File);
+            if(offset > disk.oSuperBlock.DATA_BLOCK_SIZE) // 需要多个block
+            {
+                int currentBlockLeft = disk.oSuperBlock.DATA_BLOCK_SIZE - (i-1)*sizeof(File);
+                int nextBlockLeft = offset - disk.oSuperBlock.DATA_BLOCK_SIZE;
+                memcpy(&tempFile, block.content+(i-1)*sizeof(File), currentBlockLeft);
+
+                disk.oBlockManager.ReadBlock(block.next, block);
+                memcpy(&tempFile+currentBlockLeft, block.content, nextBlockLeft);
+                offset -= disk.oSuperBlock.DATA_BLOCK_SIZE;
+                
+            }
+            else{
+                memcpy(&tempFile, block.content+offset, sizeof(File));
+            }
+            dir.vFiles.push_back(tempFile);
         }
-    
+
+    //     memcpy(&dir+pos, block.content, readSize);
+    //     pos+=readSize;
+    //     remainingSize -= readSize;
+    //     currentAddr = block.next;
+    // } while (currentAddr.to_int() != 0);
+        
+    // for (size_t i = 0; i < (fileSize / sizeof(file)); i++)
+    // {
+    //     memcpy(&file, &allContent + i*sizeof(file), sizeof(file));
+    //     dir.vFiles.push_back(file);    
+    // }
+    //memcpy(&dir, &allContent, sizeof(fileSize));
+
     return dir;
 }
 
 
-void FileManager::PrintWelcomeInfo()
+std::string FileManager::PrintWelcomeInfo()
 {
     printf("#################################################\n");
     printf("#    Index-node-based File Management System    #\n");
@@ -299,13 +367,14 @@ void FileManager::PrintWelcomeInfo()
     printf("#################################################\n");
     printf("\nYou can type 'help' to get command instructions!\n");
     printf("\n");
+    return "";
 }
 
 std::string FileManager::GetFullFilePath(Inode inode)
 {
-    string lastChar = (inode.bIsDir ? "/" : "");
-    string result = "/";
-    std::stack<string> directories;
+    std::string lastChar = (inode.bIsDir ? "/" : "");
+    std::string result = "/";
+    std::stack<std::string> directories;
     //入栈
     while (inode.iInodeId != 0)
 	{
@@ -318,4 +387,22 @@ std::string FileManager::GetFullFilePath(Inode inode)
 		directories.pop();
 	}
 	return result;
+}
+
+
+int FileManager::AllocateIPC(HANDLE*)
+{
+    return 0;
+}
+int FileManager::ListenToIPC(HANDLE*)
+{
+    return 0;
+}
+int FileManager::ReadIPC(HANDLE*)
+{
+    return 0;
+}
+int FileManager::WriteIPC(HANDLE*)
+{
+    return 0;
 }

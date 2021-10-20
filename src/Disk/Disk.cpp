@@ -3,18 +3,26 @@ int Disk::InitRootDirectory(FILE** pFile)
 {
     printf_src("Initializing Root Directory\n");
     Directory rootDir;
-    rootDir.vFiles.push_back(File(".",0));
-    rootDir.vFiles.push_back(File("..",0));
+    File temp = File(".",0);
+    rootDir.vFiles.push_back(temp);
+    temp = File("..",0);
+    rootDir.vFiles.push_back(temp);
+    printf("File size:%d, file size:%d", sizeof(File), sizeof(File));
     size_t DirSize = rootDir.vFiles.size() * sizeof(File);
-    printf_src("Root dir size\n");
-
+    printf_src("Root dir size: [%d]\n", DirSize);
+    
     int inodeId = oBlockManager.GetNextFreeInode();
     int addrInt = oBlockManager.GetNextFreeBlock();
 
     Address blockAddr = Address(addrInt);
     Inode inode = Inode(DirSize, inodeId, blockAddr, true);
     Block block = Block(0);
-    memcpy(block.content, &rootDir, DirSize);
+
+    PrintDirectoryFile(rootDir);
+    for (size_t i = 0; i < rootDir.vFiles.size(); i++)
+    {
+        memcpy(block.content+i*sizeof(File), &rootDir.vFiles[i], sizeof(File));
+    }
     oBlockManager.WriteNewBlock(blockAddr, block);
     oBlockManager.WriteNewInode(inode);
     return 0;

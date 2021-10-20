@@ -9,6 +9,7 @@
 #include<time.h>
 #include<windows.h>
 #include"MACROS.h"
+#include <math.h>
 
 #define VERBOSE false 
 #define STEPS true
@@ -79,8 +80,9 @@ class File{
 public:
 	char fileName[MAXIMUM_FILENAME_LENGTH+1];
 	unsigned int InodeId; 
-	File() {}
+	File() {memset(fileName,0,sizeof(fileName));}
 	File(const char* fname, unsigned int InodeId){
+		File();
 		strcpy(fileName, fname);
 		this->InodeId = InodeId;
 	}
@@ -97,3 +99,13 @@ public:
 		return -1;
 	}
 };
+
+static void PrintDirectoryFile(Directory& dir)
+{
+	printf("dir.vFiles.size: %d\n", dir.vFiles.size());
+	for (size_t i = 0; i < dir.vFiles.size(); i++)
+	{
+		printf("%d: file name:%s file id: %d\n", i, dir.vFiles[i].fileName, dir.vFiles[i].InodeId);
+	}
+	
+}

@@ -134,7 +134,7 @@ public:
         Fseek(pFile, oSuperBlock.iInodeBitMapStart, SEEK_SET);
         char map[oSuperBlock.iInodeN]; 
         Fread(map, sizeof(map), 1, pFile);
-        if (InodeId < sizeof(map)) { printf_err("InodeId:%d too large"); return -2;}
+        if (InodeId > sizeof(map)) { printf_err("InodeId:%d too large, size of map:%d", InodeId, sizeof(map)); return -2;}
         if (isFree == true) {map[InodeId] = 'F';}
         else {map[InodeId] = 'N';}
         Fseek(pFile, oSuperBlock.iInodeBitMapStart, SEEK_SET);

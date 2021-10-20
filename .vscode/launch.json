@@ -38,6 +38,21 @@
             "MIMode": "gdb",
             "miDebuggerPath": "D:\\Mingw\\bin\\gdb.exe",
             "preLaunchTask": "build"
+        },
+        {
+            "name": "(gdb) 轻薄本FM",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}\\build\\src\\FileManager\\FileManager.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}\\build\\src\\FileManager",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "D:\\c++\\mingw64\\bin\\gdb.exe",
+            "preLaunchTask": "build"
         }
+        
     ]
 }

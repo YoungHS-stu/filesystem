@@ -12,22 +12,22 @@ public:
     std::regex fileNamePattern;
     FileManager(/* args */);
     ~FileManager();
-    int myCreateFile(); //newfile
-    int myOpenFile(); // cat
-    int myDeleteFile(); //rm
-    int myCopyFile(); //cp
+    std::string myCreateFile(); //newfile
+    std::string myOpenFile(); // cat
+    std::string myDeleteFile(); //rm
+    std::string myCopyFile(); //cp
 
-    int myCreateDirectory(char* path);//mkdir
-    int myDeleteDirectory();//rmdir
-    int myChangeDirectory();//cd
-    int myPrintWorkingDirectory();//pwd
-    int myListDirectory(); // ls or dir
+    std::string myCreateDirectory(char* path);//mkdir
+    std::string myDeleteDirectory();//rmdir
+    std::string myChangeDirectory();//cd
+    std::string myPrintWorkingDirectory();//pwd
+    std::string myListDirectory(); // ls or dir
 
     std::string GetWorkingDirectory();
-    void PrintDiskInfo(); // info
-    void PrintHelp(); //help
-    void PrintWelcomeInfo();
-    int SystemCheck(); // check
+    std::string PrintDiskInfo(); // info
+    std::string PrintHelp(); //help
+    std::string PrintWelcomeInfo();
+    std::string SystemCheck(); // check
     int WriteCmdTokens();
     int ReadCmdTokens();
 
