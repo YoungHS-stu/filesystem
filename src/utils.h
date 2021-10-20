@@ -11,6 +11,8 @@
 #include"MACROS.h"
 #include <math.h>
 
+
+
 #define VERBOSE false 
 #define STEPS true
 #define SHOW_ERR_MSG true
@@ -118,3 +120,5 @@ static void PrintVectorString(std::vector<std::string> v)
 	}
 	
 }
+
+

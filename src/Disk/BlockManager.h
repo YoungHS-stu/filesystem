@@ -114,6 +114,9 @@ public:
             oSuperBlock.iDataBlockFreeN++;
             UpdateDataBlockBitmap(addr, true);
         }
+        else{
+            printf_err("WriteBlock failed in ClearBlock");
+        }
         return 0;
     }
 
@@ -190,18 +193,20 @@ public:
             oSuperBlock.iInodeFreeN--;
             UpdateInodeBitmap(inode.iInodeId, false);
         }
+        else{printf_err("WriteNewInode failed");}
         return 0;
     }
 
-    int ClearNewInode(Inode inode) {
+    int ClearInode(Inode inode) {
         int inode_id = inode.iInodeId;
         Inode new_inode;
         new_inode.iInodeId = inode_id;
         errno_t r = WriteInode(inode);
         if(r==0) {
             oSuperBlock.iInodeFreeN++;
-            UpdateInodeBitmap(inode.iInodeId, false);
+            UpdateInodeBitmap(inode.iInodeId, true);
         }
+        else{printf_err("ClearInode failed");}
         return 0;
     }
 };

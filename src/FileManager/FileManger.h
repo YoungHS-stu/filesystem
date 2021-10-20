@@ -13,9 +13,9 @@ public:
     FileManager(/* args */);
     ~FileManager();
     std::string myCreateFile(char*, int); //newfile
-    std::string myOpenFile(); // cat
-    std::string myDeleteFile(); //rm
-    std::string myCopyFile(); //cp
+    std::string myOpenFile(char* ); // cat
+    std::string myDeleteFile(char* ); //rm
+    std::string myCopyFile(char*, char*); //cp
 
     std::string myCreateDirectory(char*);//mkdir
     std::string myDeleteDirectory();//rmdir
@@ -48,7 +48,7 @@ public:
     int WriteFilesToDirectoryFile(Directory,Inode);
     Directory ReadFilesFromDirectoryFile(Inode);
     int ParentBlockRequired(Inode&);
-
+    int WriteDirFilesToDirBlock(Directory);
 };
 
 
