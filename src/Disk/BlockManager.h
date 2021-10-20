@@ -147,7 +147,7 @@ public:
         Fseek(pFile, oSuperBlock.iDataBlockBitMapStart, SEEK_SET);
         char map[oSuperBlock.iInodeN]; 
         Fread(map, sizeof(map), 1, pFile);
-        if (addr_int < sizeof(map)) { printf("addr too large"); return -2;}
+        if (addr_int > sizeof(map)) { printf("addr too large"); return -2;}
         if (isFree == true) {map[addr_int] = 'f';}
         else {map[addr_int] = 'n';}
         Fseek(pFile, oSuperBlock.iDataBlockBitMapStart, SEEK_SET);

@@ -59,10 +59,11 @@ std::string FileManager::myCopyFile()
 
 std::string FileManager::myCreateDirectory(char* path)
 {
-    std::result="";
+    std::string result="";
     printf_src("\n");
     std::vector<std::string> vPathList;
     SplitStringIntoVector(std::string(path), "/", vPathList);
+    PrintVectorString(vPathList);
     for (size_t i = 0; i < vPathList.size(); i++)
     {
         if (vPathList[i].length() > MAXIMUM_FILENAME_LENGTH - 1) {
@@ -71,28 +72,64 @@ std::string FileManager::myCreateDirectory(char* path)
         }
     }
 
-    int inode_id = disk.oCurrentInode.iInodeId;
+   
     for (size_t i = 0; i < vPathList.size(); i++) {
-        Inode inode_ptr = disk.oBlockManager.ReadInode(inode_id);
-        if (!inode_ptr.bIsDir) {
-				printf("%s is a file! You can not create directory under here!\n", GetFileNameFromInode(inode_ptr).c_str());
+        
+        if (!disk.oCurrentInode.bIsDir) {
+				printf("%s is a file! You can not create directory under here!\n", GetFileNameFromInode(disk.oCurrentInode).c_str());
 				return "";
 		}
-        Directory dir = ReadFilesFromDirectoryFile(inode_ptr);
+        Directory dir = ReadFilesFromDirectoryFile(disk.oCurrentInode);
         int nextDirInodeId = dir.FindFiles(vPathList[i].c_str());
-        if(nextDirInodeId != -1);//找到了目录
-        {
-            inode_id = nextDirInodeId;
-        }
-        else{ //没有找到
-            s
 
-            if (i == pathList.size() - 1) {
-                printf("create directory successfully!\n");
-                return;
+        if(nextDirInodeId != -1)//找到了目录
+        {
+            disk.oCurrentInode = disk.oBlockManager.ReadInode(nextDirInodeId);//指向下一个inode(目录)
+        }
+        else
+        { //没有找到
+            //找空闲inode和block
+            //-1先创建新的dir file
+            printf_src("creating new");
+            int inodeId = disk.oBlockManager.GetNextFreeInode();
+            int addrInt = disk.oBlockManager.GetNextFreeBlock();
+            Directory newtDir;
+            File temp = File(".",inodeId);
+            newtDir.vFiles.push_back(temp);
+            temp = File("..",disk.oCurrentInode.iInodeId);
+            newtDir.vFiles.push_back(temp);
+            Address blockAddr = Address(addrInt);
+            size_t DirSize = newtDir.vFiles.size() * sizeof(File);
+            Block block = Block(0);
+            Inode inode = Inode(DirSize, inodeId, blockAddr, disk.oCurrentInode.iInodeId ,true);
+            for (size_t i = 0; i < newtDir.vFiles.size(); i++)
+            {
+                memcpy(block.content+i*sizeof(File), &newtDir.vFiles[i], sizeof(File));
+            }
+            disk.oBlockManager.WriteNewBlock(blockAddr, block);
+            disk.oBlockManager.WriteNewInode(inode);
+
+            //-2然后写目录到当前目录中
+            printf_src("putting current");
+            if(disk.oCurrentInode.fileSize + sizeof(File) < disk.oSuperBlock.DATA_BLOCK_SIZE)
+            {
+                File newfile = File(vPathList[i].c_str(),0);
+                dir.vFiles.push_back(newfile);
+                Block block = Block(0); 
+                for (size_t i = 0; i < newtDir.vFiles.size(); i++)
+                {
+                    memcpy(block.content+i*sizeof(File), &newtDir.vFiles[i], sizeof(File));
+                }
+                disk.oBlockManager.WriteBlock(disk.oCurrentInode.addrStart, block);
+                disk.oBlockManager.WriteInode(inode);
+            }
+
+            if (i == vPathList.size() - 1) {
+                return "create directory successfully!\n";
 		    }
         }
-        printf("directory already exists\n")
+        
+        return "directory already exists\n";
     }
 
 
@@ -194,7 +231,7 @@ void FileManager::CmdParser()
 			return;
 		}
         printf_src("creating dir with path:%s\n", path);
-        myCreateDirectory(path);
+        printf("%s",myCreateDirectory(path).c_str());
     }
     else if (strcmp(command, "rmdir")==0) {
         myDeleteDirectory();
@@ -390,6 +427,9 @@ std::string FileManager::GetFullFilePath(Inode inode)
 }
 
 
+
+
+
 int FileManager::AllocateIPC(HANDLE*)
 {
     return 0;
@@ -406,3 +446,5 @@ int FileManager::WriteIPC(HANDLE*)
 {
     return 0;
 }
+
+

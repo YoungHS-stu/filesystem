@@ -6,7 +6,7 @@ class Inode {
 public:
     Inode() {}
     ~Inode() {};
-    Inode(unsigned fileSize, int inode_id, Address addr, bool isDir=false, int owner_id=0)
+    Inode(unsigned fileSize, int inode_id, Address addr, int parent, bool isDir=false, int owner_id=0)
     {   
         UpdateCreatedTime();
         UpdateModifiedTime();
@@ -16,6 +16,7 @@ public:
         memcpy(&addrStart, &addr, sizeof(addr));
         this->bIsDir = isDir;
         this->iOwnerId = owner_id;
+        this->iParent = parent;
     }
 
 	unsigned int iInodeId; //4B

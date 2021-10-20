@@ -13,9 +13,8 @@ int Disk::InitRootDirectory(FILE** pFile)
     
     int inodeId = oBlockManager.GetNextFreeInode();
     int addrInt = oBlockManager.GetNextFreeBlock();
-
     Address blockAddr = Address(addrInt);
-    Inode inode = Inode(DirSize, inodeId, blockAddr, true);
+    Inode inode = Inode(DirSize, inodeId, blockAddr, 0, true);
     Block block = Block(0);
 
     PrintDirectoryFile(rootDir);

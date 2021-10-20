@@ -47,6 +47,8 @@ public:
     void RecursiveDeleteDirectory(Inode );
     int WriteFilesToDirectoryFile(Directory,Inode);
     Directory ReadFilesFromDirectoryFile(Inode);
+    int ParentBlockRequired(Inode&);
+
 };
 
 

@@ -109,3 +109,12 @@ static void PrintDirectoryFile(Directory& dir)
 	}
 	
 }
+
+static void PrintVectorString(std::vector<std::string> v)
+{
+	for (size_t i = 0; i < v.size(); i++)
+	{
+		std::cout<< i <<": " << v[i] << std::endl; 
+	}
+	
+}
