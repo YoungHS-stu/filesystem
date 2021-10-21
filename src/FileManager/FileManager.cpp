@@ -47,6 +47,7 @@ void FileManager::run()
         if (!strcmp(userInput, "exit"))break;
         if (!strcmp(userInput, "quit"))break;
         CmdParser();
+        
         memset(userInput, 0, sizeof(userInput));
     }
     
@@ -205,7 +206,13 @@ std::string FileManager::myDeleteFile(char* path)
         if(i!=pathList.size()-1) //处于文件夹的部分
         {
             int nextInode = dir.FindFiles(pathList[i].c_str());
-            if (nextInode != -1) {
+            if (nextInode != -1) { //找到了名字匹配，需要判断类型
+                Inode tempInode = disk.oBlockManager.ReadInode(nextInode);
+                {
+                    if(!tempInode.bIsDir){
+                        return "path not exits";
+                    }
+                }
                 inode_id_ptr = nextInode;
                 continue; //路径中的文件夹存在, 进入下一级
             }
@@ -224,6 +231,8 @@ std::string FileManager::myDeleteFile(char* path)
                 {
                     return "This is a directory. To delete directory, use [rmdir] instead";
                 }
+                //if (DeleteFileHelper(inode) < 0) return "Delete File Failure";
+
                 PrintInode(inode);
                 disk.oBlockManager.ClearInode(inode);
                
@@ -308,6 +317,7 @@ std::string FileManager::myCreateDirectory(char* path)
         }
     }
  
+    
     for (size_t i = 0; i < vPathList.size(); i++) {
         
         if (!disk.oCurrentInode.bIsDir) {
@@ -331,10 +341,8 @@ std::string FileManager::myCreateDirectory(char* path)
             printf("new inode: %d, new block:%d\n", inodeId, addrInt);
 
             Directory newtDir;
-            File temp = File(".",inodeId);
-            newtDir.vFiles.push_back(temp);
-            temp = File("..",disk.oCurrentInode.iInodeId);
-            newtDir.vFiles.push_back(temp);
+            newtDir.vFiles.push_back(File(".", inodeId));
+            newtDir.vFiles.push_back(File("..",disk.oCurrentInode.iInodeId));
 
             Address blockAddr = Address(addrInt);
             size_t DirSize = newtDir.vFiles.size() * sizeof(File);
@@ -380,11 +388,35 @@ std::string FileManager::myCreateDirectory(char* path)
 
     return "";
 }
-std::string FileManager::myDeleteDirectory()
+std::string FileManager::myDeleteDirectory(char* path)
 {
     std::string result="";
+    std::vector<std::string> pathList;
+    SplitStringIntoVector(std::string(path), "/", pathList);
+    PrintVectorString(pathList);
+    for (size_t i = 0; i < pathList.size(); i++)
+    {
+        if (pathList[i].length() > MAXIMUM_FILENAME_LENGTH - 1) {
+            printf_err("The directory/file name: %s is too long! Maximum length: %d", pathList[i].c_str(), MAXIMUM_FILENAME_LENGTH - 1);
+            return "";
+        }
+    }
 
-    return result;
+    int to_be_deleted_inode_id = GetInodeIdFromPath(path);   
+    if (to_be_deleted_inode_id < 0){
+        return "Directory not found!";
+    }
+    Inode to_be_deleted_dir_inode = disk.oBlockManager.ReadInode(to_be_deleted_inode_id);
+    if (!to_be_deleted_dir_inode.bIsDir) {
+        return "This is a file. You can use 'rmfile' command to delete a file!";
+    }
+    
+    if (to_be_deleted_dir_inode.iInodeId == disk.oCurrentInode.iInodeId) {
+            return "You cannot delete current working directory!";	
+	}
+
+    return RecursiveDeleteDirectory(to_be_deleted_dir_inode);
+
 }
 std::string FileManager::myChangeDirectory(char* path)
 {
@@ -403,7 +435,6 @@ std::string FileManager::myPrintWorkingDirectory()
     printf("%s\n",GetWorkingDirectory().c_str());
     return "";
 }
-
 std::string FileManager::GetWorkingDirectory() {
     return GetFullFilePath(disk.oCurrentInode);
 }
@@ -480,11 +511,26 @@ void FileManager::CmdParser()
         printf("%s",myCreateDirectory(path).c_str());
     }
     else if (strcmp(command, "rmdir")==0) {
-        printf("%s\n",myDeleteDirectory().c_str());
+        CHECK_PATH_ARGS();
+        CHECK_REDUNDANT_ARGS();
+        if (!std::regex_match(std::string(path), fileNamePattern))
+		{
+			printf_err("Your directory name does not meet the regex specification '^([a-z]|[A-Z]|[_/.]|[0-9])*$' "
+				"The file name can only consist of uppercase or lowercase English letters, numbers or underscores");
+			return;
+		}
+        printf("%s\n",myDeleteDirectory(path).c_str());
+
     }
     else if (strcmp(command, "cd")==0) { //-已完成
         CHECK_PATH_ARGS();
         CHECK_REDUNDANT_ARGS();
+        if (!std::regex_match(std::string(path), fileNamePattern))
+		{
+			printf("Your directory name does not meet the specification. regex specification '^([a-z]|[A-Z]|[_/.]|[0-9])*$' "
+				"The file name can only consist of uppercase or lowercase English letters, numbers or underscores\n");
+			return;
+		}
 
         printf("%s\n",myChangeDirectory(path).c_str());
     }
@@ -504,8 +550,15 @@ void FileManager::CmdParser()
         printf("%s\n",myCopyFile(path,path).c_str());
     }
     else if (strcmp(command, "rmfile")==0) {
+        
         CHECK_PATH_ARGS();
         CHECK_REDUNDANT_ARGS();
+        if (!std::regex_match(std::string(path), fileNamePattern))
+		{
+			printf("Your file name does not meet the specification. "
+				"The file name can only consist of uppercase or lowercase English letters, numbers or underscores\n");
+			return;
+		}
         printf("%s\n",myDeleteFile(path).c_str());
     }
     else if (strcmp(command, "mkfile")==0) {
@@ -609,9 +662,35 @@ std::string FileManager::GetFileNameFromInode(Inode inode) {
 }
 
 
-void FileManager::RecursiveDeleteDirectory(Inode inode)
+std::string FileManager::RecursiveDeleteDirectory(Inode inode)
 {
+    if (inode.fileSize == 2 * sizeof(File)) { //是个空文件夹，直接删除
+        std::string filePath = GetFullFilePath(inode);
+        if (DeleteFileHelper(inode) < 0 ) {return "Delete directory" + GetFullFilePath(inode) + "Failed"; }
+        else {return "Delete directory successful";}
+    }
 
+    Directory dir = ReadFilesFromDirectoryFile(inode); //删除文件夹下的内容
+    for (size_t i = 0; i < dir.vFiles.size(); i++)
+    {
+        if (!strcmp(dir.vFiles[i].fileName, ".") || !strcmp(dir.vFiles[i].fileName, "..")) 
+			continue;
+        
+        Inode inode_to_delete = disk.oBlockManager.ReadInode(dir.vFiles[i].InodeId);
+        if (inode_to_delete.bIsDir) { //如果是文件夹，递归调用
+			RecursiveDeleteDirectory(inode_to_delete);
+		}
+        else{
+            //std::string filePath = GetFullFilePath(inode_to_delete);
+            if (DeleteFileHelper(inode) < 0) {
+                return "Delete File" + GetFullFilePath(inode) + "Failed";
+            }
+        }
+    }
+    
+    //删除自己
+    if (DeleteFileHelper(inode) < 0) return "delete directory failed";
+    return "Delete directory successful";
 }
 int FileManager::WriteFilesToDirectoryFile(Directory dir, Inode inode)
 {
@@ -716,9 +795,6 @@ std::string FileManager::GetFullFilePath(Inode inode)
 }
 
 
-
-
-
 int FileManager::AllocateIPC(HANDLE*)
 {
     return 0;
@@ -742,5 +818,47 @@ int FileManager::WriteDirFilesToDirBlock(Directory)
     return 0;
 }
 
+int FileManager::DeleteFileHelper(Inode inode) //给一个inode, 把这个inode对应的block删掉
+{
+    PrintInode(inode);
+    disk.oBlockManager.ClearInode(inode);
+    disk.oBlockManager.ClearBlock(inode.addrStart);
+
+    Inode parent = disk.oBlockManager.ReadInode(inode.iParent);
+    Directory dir = ReadFilesFromDirectoryFile(parent);
+    PrintDirectoryFile(dir);
+    for (size_t i = 0; i < dir.vFiles.size(); i++)
+    {
+        if(dir.vFiles[i].InodeId == inode.iInodeId) dir.vFiles.erase(dir.vFiles.begin()+i);
+    }
+    PrintDirectoryFile(dir);
+
+    parent.fileSize -= sizeof(File);
+    disk.oBlockManager.WriteInode(parent);
+    if(disk.oCurrentInode.iInodeId == parent.iInodeId){
+        disk.oCurrentInode = parent;
+    }
 
 
+    Block parentDirBlock;
+    disk.oBlockManager.ReadBlock(parent.addrStart, parentDirBlock);
+    
+    for (size_t i = 0; i < dir.vFiles.size(); i++)
+    {
+        memcpy(parentDirBlock.content + i*sizeof(File), &dir.vFiles[i], sizeof(File));
+    }
+    disk.oBlockManager.WriteBlock(parent.addrStart, parentDirBlock);
+
+    return 0;
+}
+
+static std::string CheckPathAndFilePattern(std::string path, std::regex fileNamePattern)
+{
+    if (!std::regex_match(std::string(path), fileNamePattern))
+    {
+        return "Your directory name does not meet the regex specification '^([a-z]|[A-Z]|[_/.]|[0-9])*$'\n \
+        The file name can only consist of uppercase or lowercase English letters, numbers or underscores";
+    }
+    
+    return "";
+}

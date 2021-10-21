@@ -18,7 +18,8 @@ public:
     std::string myCopyFile(char*, char*); //cp
 
     std::string myCreateDirectory(char*);//mkdir
-    std::string myDeleteDirectory();//rmdir
+    std::string myDeleteDirectory(char*);//rmdir
+    int DeleteFileHelper(Inode);
     std::string myChangeDirectory(char*);//cd
     std::string myPrintWorkingDirectory();//pwd
     std::string myListDirectory(); // ls or dir
@@ -44,7 +45,7 @@ public:
     std::string GetFullFilePath(Inode);
     std::string GetFileFromInode(Inode);
     std::string GetFileNameFromInode(Inode );
-    void RecursiveDeleteDirectory(Inode );
+    std::string RecursiveDeleteDirectory(Inode );
     int WriteFilesToDirectoryFile(Directory,Inode);
     Directory ReadFilesFromDirectoryFile(Inode);
     int ParentBlockRequired(Inode&);

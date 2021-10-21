@@ -105,18 +105,26 @@ public:
     }
 
     int ClearBlock(Address addr) {
-        int addr_int = addr.to_int();
+
         Block block;
-        memset(block.next.addr, 'D', sizeof(block.next.addr));
-        memset(block.content, 'd', sizeof(block.content));
-        errno_t r = WriteBlock(addr, block);
-        if(r==0) {
-            oSuperBlock.iDataBlockFreeN++;
-            UpdateDataBlockBitmap(addr, true);
+        ReadBlock(addr, block);
+        if (block.next.to_int() != 0){
+            ClearBlock(block.next);
         }
         else{
-            printf_err("WriteBlock failed in ClearBlock");
+            //没有下一个，可以删除了
+            memset(block.next.addr, 'D', sizeof(block.next.addr));
+            memset(block.content, 'd', sizeof(block.content));
+            errno_t r = WriteBlock(addr, block);
+            if(r==0) {
+                oSuperBlock.iDataBlockFreeN++;
+                UpdateDataBlockBitmap(addr, true);
+            }
+            else{
+                printf_err("WriteBlock failed in ClearBlock: %d", addr.to_int());
+            }
         }
+
         return 0;
     }
 
