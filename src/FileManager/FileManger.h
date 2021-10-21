@@ -12,13 +12,15 @@ public:
     std::regex fileNamePattern;
     FileManager(/* args */);
     ~FileManager();
-    std::string myCreateFile(char*, int); //newfile
+    std::string myCreateFile(char*, int, std::string); //newfile
     std::string myOpenFile(char* ); // cat
     std::string myDeleteFile(char* ); //rm
     std::string myCopyFile(char*, char*); //cp
+    std::string myModifyFile(char*, std::string); 
 
     std::string myCreateDirectory(char*);//mkdir
     std::string myDeleteDirectory(char*);//rmdir
+    int CreateFileHelper(Inode);
     int DeleteFileHelper(Inode);
     std::string myChangeDirectory(char*);//cd
     std::string myPrintWorkingDirectory();//pwd

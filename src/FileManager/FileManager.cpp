@@ -38,7 +38,7 @@ void FileManager::run()
     memset(userInput, 0, sizeof(userInput));
     while (true)
     {
-
+        //PrintInode(disk.oCurrentInode);
         printf("[%s@YFS %s]$: ", "root", GetWorkingDirectory().c_str());
 		scanf("%[^\n]", &userInput);
         getchar();
@@ -61,8 +61,22 @@ int FileManager::ReadCmdTokens()
     return 0;
 }
 
-std::string FileManager::myCreateFile(char* path, int filesize)
+std::string FileManager::myModifyFile(char* path, std::string content)
 {
+    int inode_id = GetInodeIdFromPath(path);
+    Inode inode = disk.oBlockManager.ReadInode(inode_id);
+    if (content.length() > inode.fileSize)
+    {
+        return "content too long";
+    }
+    
+    return "";
+}
+
+
+std::string FileManager::myCreateFile(char* path, int filesize, std::string content)
+{
+    printf("creating my file\n");
     std::string result="";
     std::vector<std::string> pathList;
     SplitStringIntoVector(std::string(path), "/", pathList);
@@ -125,7 +139,12 @@ std::string FileManager::myCreateFile(char* path, int filesize)
                     }
                     block = Block(0);
 
-                    memset(block.content, '+', filesize);
+                    memset(block.content, '\0', filesize);//初始化为\0
+                    for (size_t i = 0; i < content.length(); i++)
+                    {
+                        memset(block.content+i, content[i], 1);
+                    }
+                    // memset(block.content+i, '\0', 1);
                     disk.oBlockManager.WriteNewBlock(blockAddr, block);
                     remainingSize -= rwSize;
                 } while(remainingSize > 0);
@@ -133,7 +152,7 @@ std::string FileManager::myCreateFile(char* path, int filesize)
                 // 写进当前目录，加一个entry
                 File newfile = File(pathList[i].c_str(), inode.iInodeId);    
                 dir.vFiles.push_back(newfile);
-                PrintDirectoryFile(dir);
+                // PrintDirectoryFile(dir);
 
                 Address currentAddr = inode_ptr.addrStart;
                 Block currentblock;
@@ -181,6 +200,68 @@ std::string FileManager::myCreateFile(char* path, int filesize)
 std::string FileManager::myOpenFile(char* path)
 {
     std::string result="";
+    std::vector<std::string> pathList;
+    SplitStringIntoVector(std::string(path), "/", pathList);
+
+    for (size_t i = 0; i < pathList.size(); i++)
+    {
+        if (pathList[i].length() > MAXIMUM_FILENAME_LENGTH - 1) {
+            printf_err("Tfile name: %s is too long! Maximum length: %d", pathList[i].c_str(), MAXIMUM_FILENAME_LENGTH - 1);
+            return "File name too long! Maximum length: " + MAXIMUM_FILENAME_LENGTH;
+        }
+    }
+
+    int inode_id_ptr = disk.oCurrentInode.iInodeId;
+    for (size_t i = 0; i < pathList.size(); i++)
+    {
+        Inode inode_ptr = disk.oBlockManager.ReadInode(inode_id_ptr);
+        Directory dir = ReadFilesFromDirectoryFile(inode_ptr);
+        if(i!=pathList.size()-1) { //处于文件夹的部分
+            int nextInode = dir.FindFiles(pathList[i].c_str());
+            if (nextInode != -1) { //找到了名字匹配，需要判断类型
+                Inode tempInode = disk.oBlockManager.ReadInode(nextInode);
+                {
+                    if(!tempInode.bIsDir){
+                        return "path not exits";
+                    }
+                }
+                inode_id_ptr = nextInode;
+                continue; //路径中的文件夹存在, 进入下一级
+            }
+            else{
+                return "path not exits, mkdir first\n";
+            }
+        }
+        else{
+            int nextInode = dir.FindFiles(pathList[i].c_str());
+            if (nextInode != -1) { //找到了名字匹配，需要判断类型
+                Inode tempInode = disk.oBlockManager.ReadInode(nextInode);
+                {
+                    if(tempInode.bIsDir){
+                        return "This is a direcotry, not a file";
+                    }
+                }
+                
+                Block block;
+                disk.oBlockManager.ReadBlock(tempInode.addrStart, block);
+                std::string file_content = "";
+                do
+                {
+                    for (size_t i = 0; i < disk.oSuperBlock.DATA_BLOCK_SIZE; i++)
+                    {
+                        if(block.content[i] == '\0') return file_content;
+                        file_content += block.content[i];
+                    }
+                    disk.oBlockManager.ReadBlock(block.next, block);
+                } while (block.next.to_int()!=0);
+                
+                return file_content;
+            }
+            else{
+                return "File not exits";
+            }
+        }
+    }
 
     return result;
 }
@@ -317,23 +398,28 @@ std::string FileManager::myCreateDirectory(char* path)
         }
     }
  
-    
+    int inode_id_ptr = disk.oCurrentInode.iInodeId;
     for (size_t i = 0; i < vPathList.size(); i++) {
-        
+
+        Inode inode_ptr = disk.oBlockManager.ReadInode(inode_id_ptr); 
         if (!disk.oCurrentInode.bIsDir) {
 				printf("%s is a file! You can not create directory under here!\n", GetFileNameFromInode(disk.oCurrentInode).c_str());
 				return "";
 		}
-        Directory dir = ReadFilesFromDirectoryFile(disk.oCurrentInode);
+        Directory dir = ReadFilesFromDirectoryFile(inode_ptr);
         int nextDirInodeId = dir.FindFiles(vPathList[i].c_str());
-
-        if(nextDirInodeId != -1)//找到了目录
-        {
-            disk.oCurrentInode = disk.oBlockManager.ReadInode(nextDirInodeId);//指向下一个inode(目录)
+        if(i!=vPathList.size()-1){ //不是最后一级
+            if(nextDirInodeId != -1) {//找到了目录
+                inode_id_ptr= nextDirInodeId; continue;//指向下一个inode(目录) 
+            }
         }
-        else
-        { //没有找到
-            //找空闲inode和block
+        else{   //最后一级
+                //找空闲inode和block
+            if(nextDirInodeId != -1) {//找到了匹配
+                if(disk.oBlockManager.ReadInode(nextDirInodeId).bIsDir){ //名字匹配，且是目录
+                    return "Directory aldready exits";
+                }
+            }
             //-1先创建新的dir file
             printf_src("creating new");
             int inodeId = disk.oBlockManager.GetNextFreeInode();
@@ -342,12 +428,12 @@ std::string FileManager::myCreateDirectory(char* path)
 
             Directory newtDir;
             newtDir.vFiles.push_back(File(".", inodeId));
-            newtDir.vFiles.push_back(File("..",disk.oCurrentInode.iInodeId));
+            newtDir.vFiles.push_back(File("..",inode_id_ptr)); //inode_id_ptr 就是 parent
+            size_t DirSize = newtDir.vFiles.size() * sizeof(File);
 
             Address blockAddr = Address(addrInt);
-            size_t DirSize = newtDir.vFiles.size() * sizeof(File);
             Block block = Block(0);
-            Inode inode = Inode(DirSize, inodeId, blockAddr, disk.oCurrentInode.iInodeId ,true);
+            Inode inode = Inode(DirSize, inodeId, blockAddr, inode_id_ptr ,true);
             for (size_t i = 0; i < newtDir.vFiles.size(); i++)
             {
                 memcpy(block.content+i*sizeof(File), &newtDir.vFiles[i], sizeof(File));
@@ -372,18 +458,18 @@ std::string FileManager::myCreateDirectory(char* path)
                     memcpy(dirblock.content+i*sizeof(File), &dir.vFiles[i], sizeof(File));
                 }
                 printf("oCurrentInode filesize before: %d\n", disk.oCurrentInode.fileSize);
-                disk.oCurrentInode.fileSize += sizeof(File);
+                inode_ptr.fileSize += sizeof(File);
+                if(disk.oCurrentInode.iInodeId == inode_ptr.iInodeId){
+                    disk.oCurrentInode = inode_ptr;
+                }
                 printf("oCurrentInode filesize after : %d\n", disk.oCurrentInode.fileSize);
-                disk.oBlockManager.WriteBlock(disk.oCurrentInode.addrStart, dirblock);
-                disk.oBlockManager.WriteInode(disk.oCurrentInode);
+                disk.oBlockManager.WriteBlock(inode_ptr.addrStart, dirblock);
+                disk.oBlockManager.WriteInode(inode_ptr);
             }
 
-            if (i == vPathList.size() - 1) {
-                return "create directory successfully!\n";
-		    }
         }
         
-        return "directory already exists\n";
+        
     }
 
     return "";
@@ -415,6 +501,8 @@ std::string FileManager::myDeleteDirectory(char* path)
             return "You cannot delete current working directory!";	
 	}
 
+
+
     return RecursiveDeleteDirectory(to_be_deleted_dir_inode);
 
 }
@@ -425,6 +513,7 @@ std::string FileManager::myChangeDirectory(char* path)
     if(nextINodeId==-1) {return "Directory '"+ std::string(path) +"' not found";}
 
     Inode nextInode = disk.oBlockManager.ReadInode(nextINodeId);
+    PrintInode(nextInode);
     if (!nextInode.bIsDir) return  std::string(path) + "is a file! Not a directory!\n";
     
     disk.SetCurrentInode(nextINodeId);
@@ -564,6 +653,13 @@ void FileManager::CmdParser()
     else if (strcmp(command, "mkfile")==0) {
         CHECK_PATH_ARGS();  //char *path在这
 		CHECK_SIZE_ARGS();  //char *size和 unsigned filesize在这
+        char* content = strtok(NULL, "^");
+        std::string content_str = "";
+        if (content == NULL) {
+            printf("no content, default empty file will be created\n"); 
+            content_str = "default";
+        }
+        else {printf("content will be written: %s\n", content_str = std::string(path));}
         CHECK_REDUNDANT_ARGS();
         if (!std::regex_match(std::string(path), fileNamePattern))
 		{
@@ -571,11 +667,24 @@ void FileManager::CmdParser()
 				"The file name can only consist of uppercase or lowercase English letters, numbers or underscores\n");
 			return;
 		}
-        printf("%s",myCreateFile(path, fileSize).c_str());
+        printf("%s",myCreateFile(path, fileSize, content_str).c_str());
+
         return;
     }
     else if (strcmp(command, "cat")==0) {
         CHECK_PATH_ARGS();
+        CHECK_REDUNDANT_ARGS();
+        printf("%s\n",myOpenFile(path).c_str());
+    }
+    else if (strcmp(command, "vim")==0) {
+        CHECK_PATH_ARGS();
+        char* content = strtok(NULL, "^");
+        std::string content_str = "";
+        if (content == NULL) {
+            printf("no content, default empty file will be created\n"); 
+            content_str = "default";
+        }
+        else {printf("content will be written: %s\n", content_str = std::string(path));}
         CHECK_REDUNDANT_ARGS();
         printf("%s\n",myOpenFile(path).c_str());
     }
@@ -664,6 +773,8 @@ std::string FileManager::GetFileNameFromInode(Inode inode) {
 
 std::string FileManager::RecursiveDeleteDirectory(Inode inode)
 {
+    //printf("inode to be deleted!\n");
+    //PrintInode(inode);
     if (inode.fileSize == 2 * sizeof(File)) { //是个空文件夹，直接删除
         std::string filePath = GetFullFilePath(inode);
         if (DeleteFileHelper(inode) < 0 ) {return "Delete directory" + GetFullFilePath(inode) + "Failed"; }
@@ -671,6 +782,7 @@ std::string FileManager::RecursiveDeleteDirectory(Inode inode)
     }
 
     Directory dir = ReadFilesFromDirectoryFile(inode); //删除文件夹下的内容
+    PrintDirectoryFile(dir);
     for (size_t i = 0; i < dir.vFiles.size(); i++)
     {
         if (!strcmp(dir.vFiles[i].fileName, ".") || !strcmp(dir.vFiles[i].fileName, "..")) 
@@ -678,12 +790,14 @@ std::string FileManager::RecursiveDeleteDirectory(Inode inode)
         
         Inode inode_to_delete = disk.oBlockManager.ReadInode(dir.vFiles[i].InodeId);
         if (inode_to_delete.bIsDir) { //如果是文件夹，递归调用
+            //printf("deletting dir\n");
 			RecursiveDeleteDirectory(inode_to_delete);
 		}
         else{
+            //printf("deletting file\n");
             //std::string filePath = GetFullFilePath(inode_to_delete);
-            if (DeleteFileHelper(inode) < 0) {
-                return "Delete File" + GetFullFilePath(inode) + "Failed";
+            if (DeleteFileHelper(inode_to_delete) < 0) {
+                return "Delete File" + GetFullFilePath(inode_to_delete) + "Failed";
             }
         }
     }
@@ -817,6 +931,12 @@ int FileManager::WriteDirFilesToDirBlock(Directory)
 {
     return 0;
 }
+
+int FileManager::CreateFileHelper(Inode inode) //给一个inode, 写入
+{
+    return 0;
+}
+
 
 int FileManager::DeleteFileHelper(Inode inode) //给一个inode, 把这个inode对应的block删掉
 {
