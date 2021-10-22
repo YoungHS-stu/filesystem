@@ -14,8 +14,11 @@
 
 
 #define VERBOSE false 
-#define STEPS true
+#define STEPS false
 #define SHOW_ERR_MSG true
+#define Print_Directory_File true
+#define Print_Vector_String false
+
 #define filename(x) strrchr(x,'\\')?strrchr(x,'\\')+1:x
 #define __SOURCE__ std::string(filename(__FILE__)) + "| " + std::string(__FUNCTION__) + ": " + std::to_string(__LINE__)
 
@@ -104,6 +107,7 @@ public:
 
 static void PrintDirectoryFile(Directory& dir)
 {
+	if(Print_Directory_File){ return ;}
 	printf("dir.vFiles.size: %d\n", dir.vFiles.size());
 	for (size_t i = 0; i < dir.vFiles.size(); i++)
 	{
@@ -114,6 +118,7 @@ static void PrintDirectoryFile(Directory& dir)
 
 static void PrintVectorString(std::vector<std::string> v)
 {
+	if(Print_Vector_String){ return ;}
 	for (size_t i = 0; i < v.size(); i++)
 	{
 		std::cout<< i <<": " << v[i] << std::endl; 

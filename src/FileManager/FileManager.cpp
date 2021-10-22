@@ -79,15 +79,8 @@ std::string FileManager::myCreateFile(char* path, int filesize, std::string cont
     printf("creating my file\n");
     std::string result="";
     std::vector<std::string> pathList;
-    SplitStringIntoVector(std::string(path), "/", pathList);
+    if (CheckPathHelper(path, pathList) != 0) return "Invalid file path! Maximum length for each level: 63";
 
-    for (size_t i = 0; i < pathList.size(); i++)
-    {
-        if (pathList[i].length() > MAXIMUM_FILENAME_LENGTH - 1) {
-            printf_err("The directory/file name: %s is too long! Maximum length: %d", pathList[i].c_str(), MAXIMUM_FILENAME_LENGTH - 1);
-            return "";
-        }
-    }
 
     int inode_id_ptr = disk.oCurrentInode.iInodeId;
     for (size_t i = 0; i < pathList.size(); i++)
@@ -201,15 +194,7 @@ std::string FileManager::myOpenFile(char* path)
 {
     std::string result="";
     std::vector<std::string> pathList;
-    SplitStringIntoVector(std::string(path), "/", pathList);
-
-    for (size_t i = 0; i < pathList.size(); i++)
-    {
-        if (pathList[i].length() > MAXIMUM_FILENAME_LENGTH - 1) {
-            printf_err("Tfile name: %s is too long! Maximum length: %d", pathList[i].c_str(), MAXIMUM_FILENAME_LENGTH - 1);
-            return "File name too long! Maximum length: " + MAXIMUM_FILENAME_LENGTH;
-        }
-    }
+    if (CheckPathHelper(path, pathList) != 0) return "Invalid file path! Maximum length for each level: 63";
 
     int inode_id_ptr = disk.oCurrentInode.iInodeId;
     for (size_t i = 0; i < pathList.size(); i++)
@@ -269,15 +254,8 @@ std::string FileManager::myDeleteFile(char* path)
 {
     std::string result="";
     std::vector<std::string> pathList;
-    SplitStringIntoVector(std::string(path), "/", pathList);
+    if (CheckPathHelper(path, pathList) != 0) return "Invalid file path! Maximum length for each level: 63";
 
-    for (size_t i = 0; i < pathList.size(); i++)
-    {
-        if (pathList[i].length() > MAXIMUM_FILENAME_LENGTH - 1) {
-            printf_err("Tfile name: %s is too long! Maximum length: %d", pathList[i].c_str(), MAXIMUM_FILENAME_LENGTH - 1);
-            return "File name too long! Maximum length: " + MAXIMUM_FILENAME_LENGTH;
-        }
-    }
 
     int inode_id_ptr = disk.oCurrentInode.iInodeId;
     for (size_t i = 0; i < pathList.size(); i++)
@@ -376,9 +354,61 @@ std::string FileManager::myDeleteFile(char* path)
 
     return result;
 }
+int FileManager::CheckPathHelper(char* path, std::vector<std::string>& dst){
+    std::vector<std::string> vPathList = SplitStringIntoVector(std::string(path), "/");
+    PrintVectorString(vPathList);
+    for (size_t i = 0; i < vPathList.size(); i++)
+    {
+        if (vPathList[i].length() > MAXIMUM_FILENAME_LENGTH) {
+            return -1;
+        }
+        dst.push_back(vPathList[i]);
+    }
+    return 0;
+}
 std::string FileManager::myCopyFile(char* from_path, char* to_path)
 {
     std::string result="";
+    std::vector<std::string> fromPathList;
+    std::vector<std::string> toPathList;
+
+    if (CheckPathHelper(from_path, fromPathList) != 0) return "Invalid source path! Maximum length: 63";
+    if (CheckPathHelper(to_path,   toPathList)   != 0) return "Invalid target path! Maximum length: 63";
+
+    int from_inode_id = GetInodeIdFromPath(from_path);
+    if (from_inode_id < 0); "Source file does not exist";
+    
+    int inode_id_ptr = disk.oCurrentInode.iInodeId;
+    for (size_t i = 0; i < toPathList.size(); i++) {
+        Inode inode_ptr = disk.oBlockManager.ReadInode(inode_id_ptr);
+        Directory dir = ReadFilesFromDirectoryFile(inode_ptr);
+
+        int nextInode = dir.FindFiles(toPathList[i].c_str());
+        if(i!=toPathList.size()-1){ //不是最后一级
+            if (nextInode != -1) { //找到了名字匹配，需要判断类型
+                Inode tempInode = disk.oBlockManager.ReadInode(nextInode);
+                {
+                    if(!tempInode.bIsDir){ //不是文件夹
+                        return "target path not exits";
+                    }
+                }
+                inode_id_ptr = nextInode;
+                continue; //路径中的文件夹存在, 进入下一级
+            }
+            return "target path not exits\n";
+        }
+        else{
+            if (nextInode != -1) { //找到了名字匹配，需要判断类型
+                return "There is file or dir in target path, use a new path\n";
+            }
+            // 新建一个文件
+
+            // 将内容复制过来
+
+            // 更新父文件夹inode
+        }
+    
+    }
 
     return result;
 }
@@ -386,28 +416,20 @@ std::string FileManager::myCopyFile(char* from_path, char* to_path)
 std::string FileManager::myCreateDirectory(char* path)
 {
     std::string result="";
-    printf_src("\n");
     std::vector<std::string> vPathList;
-    SplitStringIntoVector(std::string(path), "/", vPathList);
-    PrintVectorString(vPathList);
-    for (size_t i = 0; i < vPathList.size(); i++)
-    {
-        if (vPathList[i].length() > MAXIMUM_FILENAME_LENGTH - 1) {
-            printf_err("The directory/file name: %s is too long! Maximum length: %d", vPathList[i].c_str(), MAXIMUM_FILENAME_LENGTH - 1);
-            return "";
-        }
-    }
- 
+    if (CheckPathHelper(path, vPathList) != 0) return "Invalid dir path! Maximum length: 63";
+    
     int inode_id_ptr = disk.oCurrentInode.iInodeId;
     for (size_t i = 0; i < vPathList.size(); i++) {
 
         Inode inode_ptr = disk.oBlockManager.ReadInode(inode_id_ptr); 
         if (!disk.oCurrentInode.bIsDir) {
-				printf("%s is a file! You can not create directory under here!\n", GetFileNameFromInode(disk.oCurrentInode).c_str());
-				return "";
+				result = GetFileNameFromInode(disk.oCurrentInode) + " is a file! You can not create directory under here!\n";
+                return result;
 		}
         Directory dir = ReadFilesFromDirectoryFile(inode_ptr);
         int nextDirInodeId = dir.FindFiles(vPathList[i].c_str());
+
         if(i!=vPathList.size()-1){ //不是最后一级
             if(nextDirInodeId != -1) {//找到了目录
                 inode_id_ptr= nextDirInodeId; continue;//指向下一个inode(目录) 
@@ -424,7 +446,7 @@ std::string FileManager::myCreateDirectory(char* path)
             printf_src("creating new");
             int inodeId = disk.oBlockManager.GetNextFreeInode();
             int addrInt = disk.oBlockManager.GetNextFreeBlock();
-            printf("new inode: %d, new block:%d\n", inodeId, addrInt);
+            printf_src("new inode: %d, new block:%d\n", inodeId, addrInt);
 
             Directory newtDir;
             newtDir.vFiles.push_back(File(".", inodeId));
@@ -457,12 +479,12 @@ std::string FileManager::myCreateDirectory(char* path)
                 {
                     memcpy(dirblock.content+i*sizeof(File), &dir.vFiles[i], sizeof(File));
                 }
-                printf("oCurrentInode filesize before: %d\n", disk.oCurrentInode.fileSize);
+                printf_src("oCurrentInode filesize before: %d\n", disk.oCurrentInode.fileSize);
                 inode_ptr.fileSize += sizeof(File);
                 if(disk.oCurrentInode.iInodeId == inode_ptr.iInodeId){
                     disk.oCurrentInode = inode_ptr;
                 }
-                printf("oCurrentInode filesize after : %d\n", disk.oCurrentInode.fileSize);
+                printf_src("oCurrentInode filesize after : %d\n", disk.oCurrentInode.fileSize);
                 disk.oBlockManager.WriteBlock(inode_ptr.addrStart, dirblock);
                 disk.oBlockManager.WriteInode(inode_ptr);
             }
@@ -472,21 +494,14 @@ std::string FileManager::myCreateDirectory(char* path)
         
     }
 
-    return "";
+    return result;
 }
 std::string FileManager::myDeleteDirectory(char* path)
 {
     std::string result="";
     std::vector<std::string> pathList;
-    SplitStringIntoVector(std::string(path), "/", pathList);
-    PrintVectorString(pathList);
-    for (size_t i = 0; i < pathList.size(); i++)
-    {
-        if (pathList[i].length() > MAXIMUM_FILENAME_LENGTH - 1) {
-            printf_err("The directory/file name: %s is too long! Maximum length: %d", pathList[i].c_str(), MAXIMUM_FILENAME_LENGTH - 1);
-            return "";
-        }
-    }
+    if (CheckPathHelper(path, pathList) != 0) return "Invalid dir path! Maximum length: 63";
+
 
     int to_be_deleted_inode_id = GetInodeIdFromPath(path);   
     if (to_be_deleted_inode_id < 0){
@@ -500,8 +515,6 @@ std::string FileManager::myDeleteDirectory(char* path)
     if (to_be_deleted_dir_inode.iInodeId == disk.oCurrentInode.iInodeId) {
             return "You cannot delete current working directory!";	
 	}
-
-
 
     return RecursiveDeleteDirectory(to_be_deleted_dir_inode);
 
@@ -519,7 +532,7 @@ std::string FileManager::myChangeDirectory(char* path)
     disk.SetCurrentInode(nextINodeId);
     return "change directory success";
 }
-std::string FileManager::myPrintWorkingDirectory()
+std::string FileManager::myPrintWorkingDirectory() //已废弃
 {
     printf("%s\n",GetWorkingDirectory().c_str());
     return "";
@@ -570,12 +583,24 @@ std::string FileManager::PrintDiskInfo()
 
 std::string FileManager::PrintHelp()
 {
-    return "";
+    std::string result="";
+    result += "Create a file: mkfile fileName fileSize(in Byte) content \neg. mkfile /mydir/hello.txt 10 hello world^, use ^ to indicate end of input\n\n";
+	result += "Delete a file: rmfile filename \neg. rmfile /mydir/hello.txt\n\n";
+	result += "Create a directory: mkdir dirName\neg. mkdir /dir1/sub1\n\n";
+	result += "Delete a directory: rmdir dirName\neg. rmdir /dir1/sub1\n\n";
+	result += "Change current working directory: cd dirName\neg. cd dir2\n\n";
+	result += "List directory: dir or ls \n\n";
+	result += "Copy file: cp sourceFile targetFile\neg. cp /dir1/sub1/hello.txt /dir2/sub2/hello.txt\n\n";
+	result += "Print out file contents: cat fileName\neg. cat /dir1/file1\n\n";
+	result += "Display the info of storage space: info\n\n";
+    return result;
 }
 
 std::string FileManager::SystemCheck()
 {
-        return "";
+    std::string result="Doing system check!\n";
+    
+    return result;
 }
 
 
@@ -676,7 +701,7 @@ void FileManager::CmdParser()
         CHECK_REDUNDANT_ARGS();
         printf("%s\n",myOpenFile(path).c_str());
     }
-    else if (strcmp(command, "vim")==0) {
+    else if (strcmp(command, "vim")==0) {  //TODO 待确认
         CHECK_PATH_ARGS();
         char* content = strtok(NULL, "^");
         std::string content_str = "";
@@ -714,6 +739,19 @@ int FileManager::SplitStringIntoVector(const std::string& str, const std::string
     }
     return 0;
 }
+
+std::vector<std::string> FileManager::SplitStringIntoVector(const std::string& str, const std::string& regexStr)
+{
+    std::vector<std::string> dst;
+    std::regex re(regexStr);
+    for (std::sregex_token_iterator it = std::sregex_token_iterator(str.begin(), str.end(), re, -1); 
+         it != std::sregex_token_iterator(); ++it)
+    {
+        if((std::string) *it != "") {dst.push_back((std::string) *it);}
+    }
+    return dst;
+}
+
 
 
 int FileManager::GetInodeIdFromPath(std::string path)

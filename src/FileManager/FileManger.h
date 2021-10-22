@@ -41,6 +41,7 @@ public:
     void CmdParser();
     void run();
     int SplitStringIntoVector(const std::string& , const std::string&, std::vector<std::string>&);
+    std::vector<std::string> SplitStringIntoVector(const std::string& , const std::string&);
 
     int GetInodeIdFromPath(std::string );
     unsigned GetDirectorySizeFromInode(Inode );
@@ -52,6 +53,8 @@ public:
     Directory ReadFilesFromDirectoryFile(Inode);
     int ParentBlockRequired(Inode&);
     int WriteDirFilesToDirBlock(Directory);
+
+    int CheckPathHelper(char *, std::vector<std::string>&);
 };
 
 
